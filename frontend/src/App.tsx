@@ -1,42 +1,49 @@
+// En App.tsx
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import PrivateRoute from "./router/PrivateRoute";
-
-import Home from "./pages/Home";
+import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
-import Items from "./pages/Items";
-import Eventos from "./pages/Eventos";
-import Almacenes from "./pages/Almacenes";
-import Inventario from "./pages/Inventario";
-import Presupuestos from "./pages/Presupuestos";
-import Personal from "./pages/usuarios/Personal.tsx";
-import Footer from "./components/Footer.tsx";
-
+import Dashboard from './pages/Dashboard';
+import Propiedades from "./pages/Propiedades";
+import Personal from "./pages/usuarios/Personal";
+import Footer from "./components/Footer";
 import EditarUsuario from './pages/usuarios/EditarUsuario';
-import NuevoUsuario from "./pages/usuarios/NuevoUsuario.tsx";
+import NuevoUsuario from "./pages/usuarios/NuevoUsuario";
 
-function App() {
-    const token = localStorage.getItem("token");
-    const isAuthenticated = !!token;
+function AppContent() {
+    const { isAuthenticated } = useAuth();
 
     return (
-        <Router>
-            <Routes>
-                <Route path="/" element={<Navigate to={isAuthenticated ? "/home" : "/login"} />} />
-                <Route path="/login" element={isAuthenticated ? <Navigate to="/home" /> : <Login />} />
-                <Route path="/items" element={<PrivateRoute><Items /></PrivateRoute>} />
+        <>
+            {isAuthenticated && <Navbar />}
+            <div className="main-content">
+                <Routes>
+                    <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+                    <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace/> : <Login />} />
 
-                <Route path="/home" element={<PrivateRoute><Home /></PrivateRoute>} />
-                <Route path="/eventos" element={<PrivateRoute><Eventos /></PrivateRoute>} />
-                <Route path="/almacenes" element={<PrivateRoute><Almacenes /></PrivateRoute>} />
-                <Route path="/inventario" element={<PrivateRoute><Inventario /></PrivateRoute>} />
-                <Route path="/presupuestos" element={<PrivateRoute><Presupuestos /></PrivateRoute>} />
-                <Route path="/personal" element={<PrivateRoute><Personal /></PrivateRoute>} />
-                <Route path="/personal/nuevo" element={<PrivateRoute><NuevoUsuario /></PrivateRoute>} />
-                <Route path="/personal/editar/:id" element={<EditarUsuario />} />
+                    {/* Rutas protegidas */}
+                    <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+                    <Route path="/propiedades" element={<PrivateRoute><Propiedades /></PrivateRoute>} />
+                    <Route path="/personal" element={<PrivateRoute><Personal /></PrivateRoute>} />
+                    <Route path="/personal/nuevo" element={<PrivateRoute><NuevoUsuario /></PrivateRoute>} />
+                    <Route path="/personal/editar/:id" element={<PrivateRoute><EditarUsuario /></PrivateRoute>} />
 
-                <Route path="*" element={<Navigate to="/login" />} />
-            </Routes>
+                    <Route path="*" element={<Navigate to="/login" />} />
+                </Routes>
+            </div>
             <Footer />
+        </>
+    );
+}
+
+function App() {
+    return (
+        <Router>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
         </Router>
     );
 }

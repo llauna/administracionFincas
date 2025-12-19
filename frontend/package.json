@@ -7,6 +7,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
     "animate.css": "^4.1.1",
     "bootstrap": "^5.3.8",
     "react": "^18.2.0",
@@ -14,8 +15,10 @@
     "react-router-dom": "^7.9.6"
   },
   "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.0.0",
+    "mongoose": "^9.0.2",
     "vite": "^5.0.0"
   }
 }

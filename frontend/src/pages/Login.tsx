@@ -25,9 +25,12 @@ const Login = () => {
 
             if (res.ok) {
                 localStorage.setItem("token", data.token);
+                if (data.user) {
+                    localStorage.setItem("user", JSON.stringify(data.user));
+                }
+                window.location.href = "/dashboard";
                 setMensaje("✅ Login correcto");
-                // Redirigir a items
-                navigate("/items");
+                navigate("/dashboard");
             } else {
                 setMensaje(`❌ ${data.mensaje || "Error en login"}`);
             }

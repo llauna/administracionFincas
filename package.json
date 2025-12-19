@@ -8,6 +8,7 @@
     "diagram": "node ./generateDiagram.js"
   },
   "devDependencies": {
+    "@types/axios": "^0.14.4",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
@@ -17,8 +18,11 @@
   },
   "main": "index.js",
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
     "ansi-regex": "^5.0.1",
     "ansi-styles": "^4.3.0",
+    "axios": "^1.13.2",
+    "bootstrap": "^5.3.8",
     "chalk": "^4.1.2",
     "chokidar": "^5.0.0",
     "cliui": "^8.0.1",

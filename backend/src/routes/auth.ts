@@ -66,12 +66,25 @@ router.post('/login', async (req: Request, res: Response) => {
             { expiresIn: '1h' }
         );
 
+        // Crear objeto de usuario para la respuesta (sin la contraseña)
+        const userResponse = {
+            _id: user._id,
+            email: user.email,
+            tipo: user.role, // Asumiendo que 'role' es equivalente a 'tipo' en el frontend
+            nombreCompleto: user.nombreCompleto,
+            puesto: user.puesto,
+            departamento: user.departamento
+            // Añade aquí cualquier otro campo que necesites en el frontend
+        };
+
         res.json({
             message: `Bienvenido ${user.nombreCompleto}`,
-            token
+            token,
+            user: userResponse // Añadimos el objeto de usuario a la respuesta
         });
     } catch (error) {
-        res.status(500).json({ error: 'Error al iniciar sesión', details: error });
+        console.error('Error en login:', error);
+        res.status(500).json({ error: 'Error al iniciar sesión', details: error instanceof Error ? error.message : 'Error desconocido' });
     }
 });
 
