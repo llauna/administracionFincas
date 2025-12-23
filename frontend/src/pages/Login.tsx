@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import candado from "../assets/candado.svg";
+import React from "react";
 
 const Login = () => {
     const [email, setEmail] = useState("");

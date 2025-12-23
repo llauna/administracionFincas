@@ -6,6 +6,7 @@ import path from "path"; // Importar path
 import authRoutes from './src/routes/auth';
 import userRoutes from "./src/routes/userRoutes";
 import itemRoutes from "./src/routes/itemRoutes";
+import propietarioRoutes from "./src/routes/propietarioRoutes";
 
 
 // Cargar variables de entorno
@@ -29,6 +30,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/propietarios', propietarioRoutes);
 
 // Conexión a BD
 // CAMBIO IMPORTANTE: Usamos MONGODB_URI que es lo que tienes en tu .env

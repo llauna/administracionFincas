@@ -1,24 +1,51 @@
-// src/models/Propiedad.ts
-import { Schema, model, Document } from "mongoose";
-
-export interface IPropiedad extends Document {
-    idPropietario: Schema.Types.ObjectId;
-    direccion: string;
-    numero: string;
-    poblacion: string;
-    cp: string;
-    planta: string;
-    coeficiente: number;
+export interface ComunidadRef {
+    _id: string;
+    nombre: string;
 }
 
-const PropiedadSchema = new Schema<IPropiedad>({
-    idPropietario: { type: Schema.Types.ObjectId, ref: "Propietario", required: true },
-    direccion:     { type: String, required: true },
-    numero:        { type: String, required: true },
-    poblacion:     { type: String, required: true },
-    cp:            { type: String, required: true },
-    planta:        { type: String, required: true },
-    coeficiente:   { type: Number, required: true }
-});
+export interface PropietarioRef {
+    _id: string;
+    nombre: string;
+}
 
-export const Propiedad = model<IPropiedad>("Propiedad", PropiedadSchema);
+export interface Propiedad {
+    id: string;
+    referencia: string;
+    direccion: string;
+    piso?: string;
+    puerta?: string;
+    codigoPostal?: string;
+    ciudad?: string;
+    provincia?: string;
+    pais?: string;
+    metrosCuadrados?: number;
+    numHabitaciones?: number;
+    numBanos?: number;
+    tipo: 'piso' | 'casa' | 'local' | 'trastero' | 'garaje' | 'otro';
+    estado: 'disponible' | 'alquilado' | 'en_mantenimiento' | 'baja';
+    comunidad: string | ComunidadRef;
+    propietario: string | PropietarioRef;
+    observaciones?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+// DTO (Data Transfer Object) para crear/actualizar propiedades
+export interface PropiedadDTO {
+    referencia: string;
+    direccion: string;
+    piso?: string;
+    puerta?: string;
+    codigoPostal?: string;
+    ciudad?: string;
+    provincia?: string;
+    pais?: string;
+    metrosCuadrados?: number;
+    numHabitaciones?: number;
+    numBanos?: number;
+    tipo: 'piso' | 'casa' | 'local' | 'trastero' | 'garaje' | 'otro';
+    estado: 'disponible' | 'alquilado' | 'en_mantenimiento' | 'baja';
+    comunidad: string;
+    propietario: string;
+    observaciones?: string;
+}

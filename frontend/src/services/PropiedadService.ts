@@ -1,14 +1,15 @@
 import type {Propiedad, PropiedadDTO} from '../models/Propiedad';
 
-const API_URL = 'http://tu-backend-url/api'; // Ajusta la URL de tu API
+const API_URL = 'http://localhost:5000/api'; // Ajusta la URL de tu API
 
 export const PropiedadService = {
-    // Obtener todas las propiedades
-    async getAll(): Promise<Propiedad[]> {
-        const response = await fetch(`${API_URL}/propiedades`);
-        if (!response.ok) {
-            throw new Error('Error al obtener las propiedades');
-        }
+    async getAll(): Promise<any> {
+        const response = await fetch(`${API_URL}/propiedades`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        if (!response.ok) throw new Error('Error al obtener las propiedades');
         return response.json();
     },
 
