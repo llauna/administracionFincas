@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Table, Button, Container, Spinner, Alert } from 'react-bootstrap';
 import { ComunidadService } from '../../services/ComunidadService';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -7,32 +8,51 @@ interface Comunidad {
     _id: string;
     nombre: string;
     direccion: string;
-    // Agregar más campos según sea necesario
+    codigoPostal?: string;
+    ciudad?: string;
+    pais?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 const Comunidades: React.FC = () => {
+    const navigate = useNavigate();
     const [comunidades, setComunidades] = useState<Comunidad[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchComunidades = async () => {
-            try {
-                const data = await ComunidadService.getAll();
-                setComunidades(data);
-            } catch (err) {
-                setError('Error al cargar las comunidades');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchComunidades = async () => {
+        try {
+            setLoading(true);
+            const data = await ComunidadService.getAll();
+            setComunidades(data);
+        } catch (err) {
+            setError('Error al cargar las comunidades');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchComunidades();
     }, []);
 
+    const handleDelete = async (id: string) => {
+        if (window.confirm('¿Estás seguro de que deseas eliminar esta comunidad?')) {
+            try {
+                await ComunidadService.delete(id);
+                await fetchComunidades(); // Ahora sí funcionará porque está fuera del useEffect
+            } catch (err) {
+                setError('Error al eliminar la comunidad');
+                console.error(err);
+            }
+        }
+    };
+
     if (loading) return <Spinner animation="border" />;
     if (error) return <Alert variant="danger">{error}</Alert>;
+
 
     return (
         <Container className="mt-4">
@@ -43,6 +63,9 @@ const Comunidades: React.FC = () => {
                         Nueva Comunidad
                     </Button>
                 </LinkContainer>
+                <Button variant="secondary" onClick={() => navigate('/dashboard')}>
+                    Volver
+                </Button>
 
             </div>
 
@@ -66,7 +89,11 @@ const Comunidades: React.FC = () => {
                                 </Button>
                             </LinkContainer>
 
-                            <Button variant="danger" size="sm">
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDelete(comunidad._id)}
+                            >
                                 Eliminar
                             </Button>
                         </td>

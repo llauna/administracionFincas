@@ -1,11 +1,15 @@
 import mongoose from 'mongoose';
 
-const PropietarioSchema = new mongoose.Schema({
-    nombre: { type: String, required: true },
-    telefono: { type: String },
-    email: { type: String },
-    gestorFinca: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
-    comunidades: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad' }]
+const PropiedadSchema = new mongoose.Schema({
+    tipo: { type: String, enum: ['piso', 'local', 'garaje', 'trastero'], default: 'piso' },
+    direccion: { type: String, required: true },
+    numero: { type: String },
+    piso: { type: String },
+    puerta: { type: String },
+    comunidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad', required: true },
+    propietario: { type: mongoose.Schema.Types.ObjectId, ref: 'Propietario', required: true },
+    coeficiente: { type: Number, default: 0 }
 }, { timestamps: true });
 
-export default mongoose.model('Propietario', PropietarioSchema);
+// LA CLAVE: Cambiar 'Propietario' por 'Propiedad'
+export default mongoose.models.Propiedad || mongoose.model('Propiedad', PropiedadSchema);

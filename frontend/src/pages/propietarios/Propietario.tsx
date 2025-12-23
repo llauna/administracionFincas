@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Table, Button, Container, Spinner, Alert } from 'react-bootstrap';
 import { PropietarioService } from '../../services/PropietarioService';
 import { LinkContainer } from "react-router-bootstrap";
 import type {IPropietario} from '../../models/Propietario';
 
 const PropietariosPage: React.FC = () => {
+    const navigate = useNavigate();
     const [propietarios, setPropietarios] = useState<IPropietario[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -37,6 +39,9 @@ const PropietariosPage: React.FC = () => {
                         Nuevo Propietario
                     </Button>
                 </LinkContainer>
+                <Button variant="secondary" onClick={() => navigate('/dashboard')}>
+                    Volver
+                </Button>
             </div>
 
             <Table striped bordered hover>

@@ -79,8 +79,11 @@ const EditarComunidad: React.FC = () => {
                         required
                     />
                 </Form.Group>
-                <Button variant="primary" type="submit" className="me-2">
+                <Button variant="primary" type="submit" className="me-3">
                     Guardar Cambios
+                </Button>
+                <Button variant="secondary" onClick={() => navigate('/comunidades')} className="me-2">
+                    Volver
                 </Button>
                 <Button variant="secondary" onClick={() => navigate('/comunidades')}>
                     Cancelar

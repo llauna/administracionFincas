@@ -1,4 +1,3 @@
-
 const API_URL = 'http://localhost:5000/api'; // Ajusta el puerto según tu configuración
 
 export const ComunidadService = {

@@ -9,4 +9,4 @@ const EmpresaSchema = new mongoose.Schema({
     propietarios: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Propietario' }]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Empresa', EmpresaSchema);
+export default mongoose.models.Empresa || mongoose.model('Empresa', EmpresaSchema);

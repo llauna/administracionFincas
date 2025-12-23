@@ -9,4 +9,4 @@ const ComunidadSchema = new mongoose.Schema({
     propietarios: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Propietario' }]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Comunidad', ComunidadSchema);
+export default mongoose.model('Comunidad', ComunidadSchema);

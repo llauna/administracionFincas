@@ -111,9 +111,16 @@ const NuevaPropiedad: React.FC = () => {
                             </Form.Group>
                         </Row>
 
-                        <div className="d-flex justify-content-end gap-2">
-                            <Button variant="secondary" onClick={() => navigate('/propiedades')}>Cancelar</Button>
-                            <Button type="submit">Guardar Propiedad</Button>
+                        <div className="d-flex justify-content-end mt-4">
+                            <Button variant="primary" type="submit" className="me-3">
+                                Guardar Propiedad
+                            </Button>
+                            <Button variant="secondary" onClick={() => navigate('/propiedades')} className="me-2">
+                                Volver
+                            </Button>
+                            <Button variant="secondary" onClick={() => navigate('/propiedades')}>
+                                Cancelar
+                            </Button>
                         </div>
                     </Form>
                 </Card.Body>

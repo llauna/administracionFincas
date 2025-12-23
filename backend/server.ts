@@ -7,6 +7,9 @@ import authRoutes from './src/routes/auth';
 import userRoutes from "./src/routes/userRoutes";
 import itemRoutes from "./src/routes/itemRoutes";
 import propietarioRoutes from "./src/routes/propietarioRoutes";
+import comunidadRoutes from "./src/routes/comunidadRoutes";
+import propiedadRoutes from "./src/routes/propiedadRoutes";
+import empresaRoutes from "./src/routes/empresaRoutes";
 
 
 // Cargar variables de entorno
@@ -31,6 +34,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/propietarios', propietarioRoutes);
+app.use('/api/comunidades', comunidadRoutes);
+app.use('/api/propiedades', propiedadRoutes);
+app.use('/api/empresas', empresaRoutes);
 
 // Conexión a BD
 // CAMBIO IMPORTANTE: Usamos MONGODB_URI que es lo que tienes en tu .env

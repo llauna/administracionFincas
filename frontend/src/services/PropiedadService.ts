@@ -56,6 +56,9 @@ export const PropiedadService = {
     async delete(id: string): Promise<void> {
         const response = await fetch(`${API_URL}/propiedades/${id}`, {
             method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
         });
         if (!response.ok) {
             throw new Error('Error al eliminar la propiedad');

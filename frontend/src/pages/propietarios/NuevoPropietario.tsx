@@ -5,6 +5,9 @@ import { EmpresaService } from "../../services/EmpresaService";
 import { ComunidadService } from "../../services/ComunidadService";
 import type { PropietarioDTO } from "../../models/Propietario";
 import React from "react";
+import {Button} from "react-bootstrap";
+import { Modal } from 'react-bootstrap';
+import NuevaComunidad from '../comunidades/NuevaComunidad';
 
 const NuevoPropietario = () => {
     const navigate = useNavigate();
@@ -19,6 +22,7 @@ const NuevoPropietario = () => {
     const [comunidades, setComunidades] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [showModalComunidad, setShowModalComunidad] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,11 +33,11 @@ const NuevoPropietario = () => {
                 ]);
                 setEmpresas(empresasData);
                 setComunidades(comunidadesData);
-                setLoading(false);
             } catch (error) {
                 console.error("Error al cargar datos:", error);
                 setError("Error al cargar los datos necesarios");
-                setLoading(false);
+            } finally {
+                setLoading(false); // <--- Mover aquí para que siempre se ejecute
             }
         };
 
@@ -79,6 +83,16 @@ const NuevoPropietario = () => {
         } catch (error) {
             console.error("Error al crear propietario:", error);
             setError("Error al crear el propietario: " + (error as Error).message);
+        }
+    };
+
+    const refreshComunidades = async () => {
+        try {
+            const data = await ComunidadService.getAll();
+            setComunidades(data);
+            setShowModalComunidad(false);
+        } catch (err) {
+            console.error("Error al refrescar comunidades", err);
         }
     };
 
@@ -146,11 +160,12 @@ const NuevoPropietario = () => {
 
                 <div className="mb-3">
                     <label className="form-label">Comunidades</label>
+                    <Button variant="outline-primary" size="sm" onClick={() => setShowModalComunidad(true)}>
+                        + Nueva Comunidad
+                    </Button>
                     <select
-                        multiple
-                        className="form-select"
-                        name="comunidades"
-                        value={formData.comunidades}
+                        multiple className="form-select"
+                        name="comunidades" value={formData.comunidades}
                         onChange={handleComunidadChange}
                     >
                         {comunidades.map(comunidad => (
@@ -162,17 +177,27 @@ const NuevoPropietario = () => {
                     <div className="form-text">Mantén presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples comunidades</div>
                 </div>
 
-                <div className="d-flex justify-content-between">
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => navigate('/propietarios')}
-                    >
+                {/* MODAL PARA ALTA RÁPIDA DE COMUNIDAD */}
+                <Modal show={showModalComunidad} onHide={() => setShowModalComunidad(false)} size="lg">
+                    <Modal.Header closeButton>
+                        <Modal.Title>Alta Rápida de Comunidad</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        {/* Ahora onSuccess ya no dará error de TypeScript */}
+                        <NuevaComunidad onSuccess={refreshComunidades} isModal={true} />
+                    </Modal.Body>
+                </Modal>
+
+                <div className="d-flex justify-content-end mt-4">
+                    <Button variant="primary" type="submit" className="me-3">
+                        Guardar Propietario
+                    </Button>
+                    <Button variant="secondary" onClick={() => navigate('/propietarios')} className="me-2">
+                        Volver
+                    </Button>
+                    <Button variant="secondary" onClick={() => navigate('/propietarios')}>
                         Cancelar
-                    </button>
-                    <button type="submit" className="btn btn-primary">
-                        Guardar
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>

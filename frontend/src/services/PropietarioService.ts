@@ -1,4 +1,4 @@
-import type { Propietario, PropietarioDTO } from '../models/Propietario';
+import type { IPropietario, PropietarioDTO } from '../models/Propietario';
 
 const API_URL = 'http://localhost:5000/api'; // Ajusta el puerto según tu configuración
 
@@ -14,7 +14,7 @@ export const PropietarioService = {
     },
 
     // Obtener un propietario por ID
-    async getById(id: string): Promise<Propietario> {
+    async getById(id: string): Promise<IPropietario> {
         const response = await fetch(`${API_URL}/propietarios/${id}`);
         if (!response.ok) {
             throw new Error('Propietario no encontrado');
@@ -23,11 +23,10 @@ export const PropietarioService = {
     },
 
     // Crear un nuevo propietario
-    async create(propietario: PropietarioDTO): Promise<Propietario> {
+    async create(propietario: PropietarioDTO): Promise<IPropietario> {
         // Asegurarse de que los datos estén en el formato correcto
         const dataToSend = {
             ...propietario,
-            gestorFinca: propietario.gestorFinca, // Ya debería ser un string
             comunidades: Array.isArray(propietario.comunidades)
                 ? propietario.comunidades
                 : [propietario.comunidades].filter(Boolean)
@@ -51,7 +50,7 @@ export const PropietarioService = {
     },
 
     // Actualizar un propietario existente
-    async update(id: string, propietario: Partial<PropietarioDTO>): Promise<Propietario> {
+    async update(id: string, propietario: Partial<PropietarioDTO>): Promise<IPropietario> {
         const response = await fetch(`${API_URL}/propietarios/${id}`, {
             method: 'PUT',
             headers: {

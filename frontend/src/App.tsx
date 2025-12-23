@@ -13,6 +13,7 @@ import EditarUsuario from './pages/usuarios/EditarUsuario';
 import NuevoUsuario from "./pages/usuarios/NuevoUsuario";
 import NuevoPropietario from "./pages/propietarios/NuevoPropietario";
 import Empresa from "./pages/empresa/Empresa";
+import Perfil from "./pages/usuarios/Perfil";
 
 import Comunidades from "./pages/comunidades/Comunidades";
 import Propiedades from "./pages/propiedades/Propiedades";
@@ -36,6 +37,7 @@ function AppContent() {
                     {/* Rutas protegidas */}
                     <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                     <Route path="/empresa" element={<PrivateRoute><Empresa /></PrivateRoute>} />
+                    <Route path="/perfil" element={<PrivateRoute><Perfil /></PrivateRoute>} />
                     <Route path="/comunidades" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
                     <Route path="/comunidades/nueva" element={<PrivateRoute><NuevaComunidad /></PrivateRoute>} />
                     <Route path="/comunidades/editar/:id" element={<PrivateRoute><EditarComunidad /></PrivateRoute>} />
