@@ -106,140 +106,156 @@ const NuevoUsuario = () => {
     };
 
     return (
-        <div className="container mt-4" style={{ maxWidth: "700px" }}>
-            <h1 className="mb-4">Nuevo Usuario</h1>
+        <div className="container py-3" style={{ maxWidth: "600px" }}>
+            <h3 className="mb-3">Nuevo Usuario</h3>
 
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Nombre de usuario *</label>
-                    <input
-                        type="text"
-                        name="username"
-                        className={`form-control ${errors.username ? 'is-invalid' : ''}`}
-                        value={user.username}
-                        onChange={handleChange}
-                    />
-                    {errors.username && <div className="invalid-feedback">{errors.username}</div>}
-                </div>
+            <form onSubmit={handleSubmit} className="needs-validation" noValidate>
+                <div className="row g-3">
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Nombre de usuario *</label>
+                        <input
+                            type="text"
+                            name="username"
+                            className={`form-control form-control-sm ${errors.username ? 'is-invalid' : ''}`}
+                            value={user.username}
+                            onChange={handleChange}
+                        />
+                        {errors.username && <div className="invalid-feedback">{errors.username}</div>}
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Nombre completo *</label>
-                    <input
-                        type="text"
-                        name="nombreCompleto"
-                        className={`form-control ${errors.nombreCompleto ? 'is-invalid' : ''}`}
-                        value={user.nombreCompleto}
-                        onChange={handleChange}
-                    />
-                    {errors.nombreCompleto && <div className="invalid-feedback">{errors.nombreCompleto}</div>}
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Nombre completo *</label>
+                        <input
+                            type="text"
+                            name="nombreCompleto"
+                            className={`form-control form-control-sm ${errors.nombreCompleto ? 'is-invalid' : ''}`}
+                            value={user.nombreCompleto}
+                            onChange={handleChange}
+                        />
+                        {errors.nombreCompleto && <div className="invalid-feedback">{errors.nombreCompleto}</div>}
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Email *</label>
-                    <input
-                        type="email"
-                        name="email"
-                        className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                        value={user.email}
-                        onChange={handleChange}
-                    />
-                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Email *</label>
+                        <input
+                            type="email"
+                            name="email"
+                            className={`form-control form-control-sm ${errors.email ? 'is-invalid' : ''}`}
+                            value={user.email}
+                            onChange={handleChange}
+                        />
+                        {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Rol</label>
-                    <select
-                        name="role"
-                        className="form-select"
-                        value={user.role}
-                        onChange={handleChange}
-                    >
-                        <option value="admin">Administrador</option>
-                        <option value="editor">Editor</option>
-                        <option value="viewer">Visualizador</option>
-                        <option value="empleado">Empleado</option>
-                    </select>
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Rol</label>
+                        <select
+                            name="role"
+                            className="form-select form-select-sm"
+                            value={user.role}
+                            onChange={handleChange}
+                        >
+                            <option value="admin">Administrador</option>
+                            <option value="editor">Editor</option>
+                            <option value="viewer">Visualizador</option>
+                            <option value="empleado">Empleado</option>
+                        </select>
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Contraseña *</label>
-                    <input
-                        type="password"
-                        name="password"
-                        className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                        value={user.password}
-                        onChange={handleChange}
-                    />
-                    {errors.password && <div className="invalid-feedback">{errors.password}</div>}
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Contraseña *</label>
+                        <input
+                            type="password"
+                            name="password"
+                            className={`form-control form-control-sm ${errors.password ? 'is-invalid' : ''}`}
+                            value={user.password}
+                            onChange={handleChange}
+                        />
+                        {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Confirmar Contraseña *</label>
-                    <input
-                        type="password"
-                        name="confirmPassword"
-                        className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
-                        value={user.confirmPassword}
-                        onChange={handleChange}
-                    />
-                    {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword}</div>}
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Confirmar Contraseña *</label>
+                        <input
+                            type="password"
+                            name="confirmPassword"
+                            className={`form-control form-control-sm ${errors.confirmPassword ? 'is-invalid' : ''}`}
+                            value={user.confirmPassword}
+                            onChange={handleChange}
+                        />
+                        {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword}</div>}
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Puesto</label>
-                    <input
-                        type="text"
-                        name="puesto"
-                        className="form-control"
-                        value={user.puesto}
-                        onChange={handleChange}
-                    />
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Puesto</label>
+                        <input
+                            type="text"
+                            name="puesto"
+                            className="form-control form-control-sm"
+                            value={user.puesto}
+                            onChange={handleChange}
+                        />
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Departamento</label>
-                    <input
-                        type="text"
-                        name="departamento"
-                        className="form-control"
-                        value={user.departamento}
-                        onChange={handleChange}
-                    />
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Departamento</label>
+                        <input
+                            type="text"
+                            name="departamento"
+                            className="form-control form-control-sm"
+                            value={user.departamento}
+                            onChange={handleChange}
+                        />
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Teléfono</label>
-                    <input
-                        type="tel"
-                        name="telefono"
-                        className="form-control"
-                        value={user.telefono}
-                        onChange={handleChange}
-                    />
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Teléfono</label>
+                        <input
+                            type="tel"
+                            name="telefono"
+                            className="form-control form-control-sm"
+                            value={user.telefono}
+                            onChange={handleChange}
+                        />
+                    </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Dirección</label>
-                    <textarea
-                        name="direccion"
-                        className="form-control"
-                        value={user.direccion}
-                        onChange={handleChange}
-                        rows={3}
-                    />
-                </div>
+                    <div className="col-md-6">
+                        <label className="form-label small fw-bold">Fecha de Contratación</label>
+                        <input
+                            type="date"
+                            name="fechaContratacion"
+                            className="form-control form-control-sm"
+                            value={user.fechaContratacion}
+                            onChange={handleChange}
+                        />
+                    </div>
 
-                <div className="d-flex justify-content-between mt-4">
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => navigate('/gestion-usuarios')}
-                    >
-                        Cancelar
-                    </button>
-                    <button type="submit" className="btn btn-primary">
-                        Guardar Usuario
-                    </button>
+                    <div className="col-12">
+                        <label className="form-label small fw-bold">Dirección</label>
+                        <textarea
+                            name="direccion"
+                            className="form-control form-control-sm"
+                            rows={2}
+                            value={user.direccion}
+                            onChange={handleChange}
+                        />
+                    </div>
+
+                    <div className="col-12 mt-3 d-flex justify-content-between">
+                        <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => navigate(-1)}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary btn-sm"
+                        >
+                            Guardar Usuario
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

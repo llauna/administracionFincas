@@ -1,10 +1,11 @@
 // src/pages/usuarios/ListadoUsuarios.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Table, Button, Spinner, Alert, Badge } from 'react-bootstrap';
+import { Container, Table, Button, Spinner, Alert, Badge, ButtonGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { UserService } from '../../services/UserService';
 import { EmpleadoService } from '../../services/EmpleadoService';
 import { toast } from 'react-toastify';
+import '../../assets/styles/ListadoUsuarios.css'
 
 type UserRole = 'admin' | 'editor' | 'viewer' | 'empleado';
 
@@ -172,7 +173,7 @@ const ListadoUsuarios: React.FC = () => {
                     </Button>
                     <Button
                         variant="primary"
-                        onClick={() => navigate('/usuarios/nuevo')}
+                        onClick={() => navigate('/personal/nuevo')}
                     >
                         Nuevo Usuario
                     </Button>
@@ -214,30 +215,40 @@ const ListadoUsuarios: React.FC = () => {
                                         {usuario.isActive === false ? 'Inactivo' : 'Activo'}
                                     </Badge>
                                 </td>
-                                <td>
-                                    <div className="d-flex gap-2">
+                                <td className="table-actions">
+                                    <ButtonGroup size="sm">
                                         <Button
-                                            variant="outline-primary"
-                                            size="sm"
-                                            onClick={() => navigate(`/usuarios/editar/${usuario._id}?tipo=${usuario.tipo}`)}
+                                            variant="outline-primary" className="px-3"
+                                            onClick={() => {
+                                                if (!usuario._id) {
+                                                    toast.error('No se puede editar este usuario: ID no válido');
+                                                    return;
+                                                }
+                                                navigate(`/personal/editar/${usuario._id}?tipo=${usuario.tipo}`);
+                                            }}
+
                                             title="Editar"
                                         >
-                                            <i className="bi bi-pencil"></i>
+                                            <i className="bi bi-pencil me-1"></i> Editar
                                         </Button>
                                         <Button
                                             variant="outline-danger"
-                                            size="sm"
+                                            className="px-3"
                                             onClick={() => handleEliminarUsuario(usuario._id || '', usuario.tipo)}
                                             disabled={deletingId === usuario._id}
                                             title="Eliminar"
                                         >
                                             {deletingId === usuario._id ? (
-                                                <Spinner animation="border" size="sm" />
+                                                <>
+                                                    <Spinner animation="border" size="sm" className="me-1" /> Eliminando...
+                                                </>
                                             ) : (
-                                                <i className="bi bi-trash"></i>
+                                                <>
+                                                    <i className="bi bi-trash me-1"></i> Eliminar
+                                                </>
                                             )}
                                         </Button>
-                                    </div>
+                                    </ButtonGroup>
                                 </td>
                             </tr>
                         ))

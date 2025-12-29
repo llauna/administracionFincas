@@ -44,12 +44,9 @@ const NuevaComunidad: React.FC<NuevaComunidadProps> = ({ onSuccess, isModal = fa
                 <Form.Group className="mb-3">
                     <Form.Label>Nombre</Form.Label>
                     <Form.Control
-                        type="text"
-                        name="nombre"
+                        type="text" name="nombre"
                         placeholder="Nombre de la comunidad"
-                        value={formData.nombre}
-                        onChange={handleChange}
-                        required
+                        value={formData.nombre} onChange={handleChange} required
                     />
                 </Form.Group>
                 <Form.Group className="mb-3">
@@ -64,20 +61,27 @@ const NuevaComunidad: React.FC<NuevaComunidadProps> = ({ onSuccess, isModal = fa
                         required
                     />
                 </Form.Group>
-                <Button variant="primary" type="submit" className="me-3">
-                    Guardar
-                </Button>
-                {!isModal && (
-                    <Button variant="secondary" onClick={() => navigate('/comunidades')}>
-                        Volver
+                <div className="d-flex gap-2">
+                    <Button variant="primary" type="submit" className="me-2">
+                        Guardar
                     </Button>
-                )}
-                <Button variant="secondary" onClick={() => navigate('/comunidades')} className="me-2">
-                    Volver
-                </Button>
-                <Button variant="secondary" onClick={() => navigate('/comunidades')}>
-                    Cancelar
-                </Button>
+                    {!isModal ? (
+                        <Button variant="secondary" onClick={() => navigate('/comunidades')}>
+                            Volver
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="outline-secondary"
+                            type="button"
+                            onClick={() => {
+                                if (onSuccess) onSuccess();
+                                navigate('/propietarios/nuevo');
+                            }}
+                        >
+                            Ir Alta de Propietario
+                        </Button>
+                    )}
+                </div>
             </Form>
         </Container>
     );

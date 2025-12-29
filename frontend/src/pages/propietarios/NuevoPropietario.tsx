@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PropietarioService } from "../../services/PropietarioService";
 import { EmpresaService } from "../../services/EmpresaService";
 import { ComunidadService } from "../../services/ComunidadService";
+import { PropiedadService } from "../../services/PropiedadService";
 import type { PropietarioDTO } from "../../models/Propietario";
-import React from "react";
-import {Button} from "react-bootstrap";
-import { Modal } from 'react-bootstrap';
+import type { PropiedadDTO } from "../../models/Propiedad";
+import { Button, Tabs, Tab, Modal, Form } from "react-bootstrap";
 import NuevaComunidad from '../comunidades/NuevaComunidad';
 
 const NuevoPropietario = () => {
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('datosPersonales');
     const [formData, setFormData] = useState<Omit<PropietarioDTO, '_id'>>({
         nombre: "",
         telefono: "",
@@ -18,12 +19,34 @@ const NuevoPropietario = () => {
         gestorFinca: "",
         comunidades: []
     });
+
+    // Update the estado to match the expected type
+    const [propiedadData, setPropiedadData] = useState<Omit<PropiedadDTO, '_id' | 'comunidad' | 'propietario'>>({
+        referencia: "",
+        direccion: "",
+        piso: "",
+        puerta: "",
+        tipo: "piso",    // Changed from "Piso" to match the type
+        estado: "disponible",
+        // Add other optional fields as needed
+        codigoPostal: "",
+        ciudad: "",
+        provincia: "",
+        pais: "",
+        metrosCuadrados: undefined,  // Changed from superficie
+        numHabitaciones: undefined,
+        numBanos: undefined,
+        observaciones: ""
+    });
+
     const [empresas, setEmpresas] = useState<any[]>([]);
     const [comunidades, setComunidades] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [showModalComunidad, setShowModalComunidad] = useState(false);
+    const [validated, setValidated] = useState(false);
 
+    // Cargar datos iniciales
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -37,19 +60,20 @@ const NuevoPropietario = () => {
                 console.error("Error al cargar datos:", error);
                 setError("Error al cargar los datos necesarios");
             } finally {
-                setLoading(false); // <--- Mover aquí para que siempre se ejecute
+                setLoading(false);
             }
         };
-
         fetchData();
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handlePropiedadChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setPropiedadData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleComunidadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -57,28 +81,40 @@ const NuevoPropietario = () => {
         const selectedValues = Array.from(options)
             .filter(option => option.selected)
             .map(option => option.value);
-
-        setFormData(prev => ({
-            ...prev,
-            comunidades: selectedValues
-        }));
+        setFormData(prev => ({ ...prev, comunidades: selectedValues }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const form = e.currentTarget as HTMLFormElement;
+
+        if (!form.checkValidity()) {
+            e.stopPropagation();
+            setValidated(true);
+            return;
+        }
+
         try {
-            // Asegurarse de que los datos estén en el formato correcto
-            const dataToSend = {
+            // 1. Crear el propietario
+            const propietarioCreado = await PropietarioService.create({
                 ...formData,
-                gestorFinca: formData.gestorFinca, // Ya debería ser un string
                 comunidades: Array.isArray(formData.comunidades)
                     ? formData.comunidades
                     : [formData.comunidades].filter(Boolean)
-            };
+            });
 
-            console.log('Enviando datos:', dataToSend); // Para depuración
+            // 2. Si hay datos de propiedad y se seleccionó al menos una comunidad
+            if (formData.comunidades.length > 0) {
+                const propiedadCompleta = {
+                    ...propiedadData,
+                    comunidad: formData.comunidades[0],  // Changed from comunidadId to comunidad
+                    propietario: propietarioCreado._id, // Changed from propietarioId to propietario
+                    estado: propiedadData.estado || 'disponible' // Ensure estado has a value
+                };
 
-            await PropietarioService.create(dataToSend);
+                await PropiedadService.create(propiedadCompleta);
+            }
+
             navigate('/propietarios');
         } catch (error) {
             console.error("Error al crear propietario:", error);
@@ -105,101 +141,275 @@ const NuevoPropietario = () => {
             <h2>Nuevo Propietario</h2>
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Nombre</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        name="nombre"
-                        value={formData.nombre}
-                        onChange={handleChange}
-                        required
-                    />
+            <Form noValidate validated={validated} onSubmit={handleSubmit}>
+                <Tabs
+                    activeKey={activeTab}
+                    onSelect={(k) => setActiveTab(k || 'datosPersonales')}
+                    className="mb-3"
+                >
+                    <Tab eventKey="datosPersonales" title="Datos Personales">
+                        <div className="card mt-3">
+                            <div className="card-body">
+                                <h5 className="card-title">Datos del Propietario</h5>
+                                <div className="row">
+                                    <div className="col-md-6 mb-3">
+                                        <Form.Group controlId="formNombre">
+                                            <Form.Label>Nombre *</Form.Label>
+                                            <Form.Control
+                                                required
+                                                type="text"
+                                                name="nombre"
+                                                value={formData.nombre}
+                                                onChange={handleChange}
+                                            />
+                                            <Form.Control.Feedback type="invalid">
+                                                Por favor ingrese el nombre.
+                                            </Form.Control.Feedback>
+                                        </Form.Group>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <Form.Group controlId="formTelefono">
+                                            <Form.Label>Teléfono</Form.Label>
+                                            <Form.Control
+                                                type="tel"
+                                                name="telefono"
+                                                value={formData.telefono}
+                                                onChange={handleChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                </div>
+                                <div className="row">
+                                    <div className="col-md-6 mb-3">
+                                        <Form.Group controlId="formEmail">
+                                            <Form.Label>Email</Form.Label>
+                                            <Form.Control
+                                                type="email"
+                                                name="email"
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <Form.Group controlId="formGestor">
+                                            <Form.Label>Gestor de Finca *</Form.Label>
+                                            <Form.Select
+                                                required name="gestorFinca" value={formData.gestorFinca}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="">Seleccionar gestor</option>
+                                                {empresas.map(empresa => (
+                                                    <option key={empresa._id} value={empresa._id}>
+                                                        {empresa.nombre}
+                                                    </option>
+                                                ))}
+                                            </Form.Select>
+                                            <Form.Control.Feedback type="invalid">
+                                                Por favor seleccione un gestor.
+                                            </Form.Control.Feedback>
+                                        </Form.Group>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Tab>
+
+                    <Tab eventKey="comunidades" title="Comunidades" disabled={!formData.nombre || !formData.gestorFinca}>
+                        <div className="card mt-3">
+                            <div className="card-body">
+                                <h5 className="card-title">Comunidades</h5>
+                                <div className="mb-3">
+                                    <Button
+                                        variant="outline-primary"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setShowModalComunidad(true);
+                                        }}
+                                        className="mb-2"
+                                    >
+                                        + Nueva Comunidad
+                                    </Button>
+                                    <Form.Group controlId="formComunidades">
+                                        <Form.Label>Seleccionar Comunidades *</Form.Label>
+                                        <Form.Select
+                                            multiple required name="comunidades"
+                                            value={formData.comunidades} onChange={handleComunidadChange}
+                                        >
+                                            {comunidades.map(comunidad => (
+                                                <option key={comunidad._id} value={comunidad._id}>
+                                                    {comunidad.nombre}
+                                                </option>
+                                            ))}
+                                        </Form.Select>
+                                        <Form.Text>
+                                            Mantén presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples comunidades
+                                        </Form.Text>
+                                    </Form.Group>
+                                </div>
+                            </div>
+                        </div>
+                    </Tab>
+
+                    <Tab eventKey="propiedad" title="Propiedad" disabled={formData.comunidades.length === 0}>
+                        <div className="card mt-3">
+                            <div className="card-body">
+                                <h5 className="card-title">Datos de la Propiedad</h5>
+                                <div className="row">
+                                    <div className="col-md-6 mb-3">
+                                        <Form.Group controlId="formTipo">
+                                            <Form.Label>Tipo de Propiedad</Form.Label>
+                                            <Form.Select
+                                                name="tipo" value={propiedadData.tipo} onChange={handlePropiedadChange} >
+                                                <option value="piso">Piso</option>
+                                                <option value="casa">Casa</option>
+                                                <option value="local">Local</option>
+                                                <option value="trastero">Trastero</option>
+                                                <option value="garaje">Garaje</option>
+                                                <option value="otro">Otro</option>
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <Form.Group controlId="formReferencia">
+                                            <Form.Label>Referencia Catastral</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="referenciaCatastral"
+                                                value={propiedadData.referencia}
+                                                onChange={handlePropiedadChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                </div>
+                                <div className="row">
+                                    <div className="col-md-4 mb-3">
+                                        <Form.Group controlId="formSuperficie">
+                                            <Form.Label>Superficie (m²)</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                step="0.01"
+                                                name="superficie"
+                                                value={propiedadData.metrosCuadrados}
+                                                onChange={handlePropiedadChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                    <div className="col-md-2 mb-3">
+                                        <Form.Group controlId="formPortal">
+                                            <Form.Label>Portal</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="portal"
+                                                value={propiedadData.piso || ''}
+                                                onChange={handlePropiedadChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                    <div className="col-md-3 mb-3">
+                                        <Form.Group controlId="formPiso">
+                                            <Form.Label>Piso</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="piso"
+                                                value={propiedadData.piso}
+                                                onChange={handlePropiedadChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                    <div className="col-md-3 mb-3">
+                                        <Form.Group controlId="formPuerta">
+                                            <Form.Label>Puerta</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="puerta"
+                                                value={propiedadData.puerta}
+                                                onChange={handlePropiedadChange}
+                                            />
+                                        </Form.Group>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </Tab>
+                </Tabs>
+
+                <div className="d-flex justify-content-between mt-4">
+                    <div>
+                        {activeTab === 'comunidades' && (
+                            <Button
+                                variant="secondary"
+                                className="me-2"
+                                onClick={() => setActiveTab('datosPersonales')}
+                            >
+                                Anterior
+                            </Button>
+                        )}
+                        {activeTab === 'propiedad' && (
+                            <Button
+                                variant="secondary"
+                                className="me-2"
+                                onClick={() => setActiveTab('comunidades')}
+                            >
+                                Anterior
+                            </Button>
+                        )}
+                    </div>
+
+                    <div>
+                        {activeTab === 'datosPersonales' && (
+                            <Button
+                                variant="primary"
+                                onClick={() => setActiveTab('comunidades')}
+                                disabled={!formData.nombre || !formData.gestorFinca}
+                            >
+                                Siguiente
+                            </Button>
+                        )}
+                        {activeTab === 'comunidades' && (
+                            <Button
+                                variant="primary"
+                                onClick={() => setActiveTab('propiedad')}
+                                disabled={formData.comunidades.length === 0}
+                            >
+                                Siguiente
+                            </Button>
+                        )}
+                        {activeTab === 'propiedad' && (
+                            <Button variant="success" type="submit">
+                                Guardar Propietario y Propiedad
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Teléfono</label>
-                    <input
-                        type="tel"
-                        className="form-control"
-                        name="telefono"
-                        value={formData.telefono}
-                        onChange={handleChange}
-                    />
-                </div>
-
-                <div className="mb-3">
-                    <label className="form-label">Email</label>
-                    <input
-                        type="email"
-                        className="form-control"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                    />
-                </div>
-
-                <div className="mb-3">
-                    <label className="form-label">Gestor de Finca</label>
-                    <select
-                        className="form-select"
-                        name="gestorFinca"
-                        value={formData.gestorFinca}
-                        onChange={handleChange}
-                        required
+                <div className="d-flex justify-content-end mt-2">
+                    <Button
+                        variant="outline-secondary"
+                        onClick={() => navigate('/propietarios')}
+                        className="me-2"
                     >
-                        <option value="">Seleccionar gestor</option>
-                        {empresas.map(empresa => (
-                            <option key={empresa._id} value={empresa._id}>
-                                {empresa.nombre}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="mb-3">
-                    <label className="form-label">Comunidades</label>
-                    <Button variant="outline-primary" size="sm" onClick={() => setShowModalComunidad(true)}>
-                        + Nueva Comunidad
-                    </Button>
-                    <select
-                        multiple className="form-select"
-                        name="comunidades" value={formData.comunidades}
-                        onChange={handleComunidadChange}
-                    >
-                        {comunidades.map(comunidad => (
-                            <option key={comunidad._id} value={comunidad._id}>
-                                {comunidad.nombre}
-                            </option>
-                        ))}
-                    </select>
-                    <div className="form-text">Mantén presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples comunidades</div>
-                </div>
-
-                {/* MODAL PARA ALTA RÁPIDA DE COMUNIDAD */}
-                <Modal show={showModalComunidad} onHide={() => setShowModalComunidad(false)} size="lg">
-                    <Modal.Header closeButton>
-                        <Modal.Title>Alta Rápida de Comunidad</Modal.Title>
-                    </Modal.Header>
-                    <Modal.Body>
-                        {/* Ahora onSuccess ya no dará error de TypeScript */}
-                        <NuevaComunidad onSuccess={refreshComunidades} isModal={true} />
-                    </Modal.Body>
-                </Modal>
-
-                <div className="d-flex justify-content-end mt-4">
-                    <Button variant="primary" type="submit" className="me-3">
-                        Guardar Propietario
-                    </Button>
-                    <Button variant="secondary" onClick={() => navigate('/propietarios')} className="me-2">
-                        Volver
-                    </Button>
-                    <Button variant="secondary" onClick={() => navigate('/propietarios')}>
                         Cancelar
                     </Button>
                 </div>
-            </form>
+            </Form>
+
+            <Modal show={showModalComunidad} onHide={() => setShowModalComunidad(false)} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>Alta Rápida de Comunidad</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <NuevaComunidad
+                        onSuccess={() => {
+                            refreshComunidades();
+                            setShowModalComunidad(false);
+                        }}
+                        isModal={true}
+                    />
+                </Modal.Body>
+            </Modal>
         </div>
     );
 };

@@ -1,5 +1,6 @@
+import React from "react";
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getAuthHeader } from "../../services/auth";
 
 interface User {
@@ -12,10 +13,14 @@ interface User {
     fechaContratacion: string;
     telefono: string;
     direccion: string;
+    tipo: 'usuario' | 'empleado' | 'propietario';
+    isActive?: boolean;
 }
 
 const EditarUsuario = () => {
     const { id } = useParams<{ id: string }>();
+    const [searchParams] = useSearchParams();
+    const tipo = searchParams.get('tipo') || 'usuario';
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [error, setError] = useState("");
@@ -28,7 +33,10 @@ const EditarUsuario = () => {
                 });
                 if (!res.ok) throw new Error("Error al cargar el usuario");
                 const data = await res.json();
-                setUser(data);
+                setUser({
+                    ...data,
+                    tipo: data.tipo || tipo // Usar el tipo del usuario si existe, si no, usar el de la URL
+                });
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Error desconocido");
             }
@@ -37,14 +45,23 @@ const EditarUsuario = () => {
     }, [id]);
 
     const handleSave = async () => {
+        if (!user) return;
         try {
+            const userData = {
+                ...user,
+                // Asegurarse de que el tipo se mantenga
+                tipo: user.tipo || tipo
+            };
             const res = await fetch(`/api/users/${id}`, {
                 method: "PUT",
-                headers: getAuthHeader(),
-                body: JSON.stringify(user),
+                headers: {
+                    ...getAuthHeader(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData),
             });
             if (!res.ok) throw new Error("Error al guardar cambios");
-            navigate("/personal");
+            navigate("/usuarios/listado");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Error desconocido");
         }
@@ -70,11 +87,8 @@ const EditarUsuario = () => {
             <div className="mb-3">
                 <label>Email</label>
                 <input
-                    type="email"
-                    className="form-control"
-                    value={user.email}
-                    disabled
-                />
+                    type="email" className="form-control"
+                    value={user.email} disabled />
                 <small className="text-muted">El email no puede ser modificado</small>
             </div>
 
@@ -144,7 +158,7 @@ const EditarUsuario = () => {
             </div>
 
             <div className="d-flex gap-2">
-                <button className="btn btn-secondary" onClick={() => navigate("/personal")}>
+                <button className="btn btn-secondary" onClick={() => navigate("/usuarios/listado")}>
                     Cancelar
                 </button>
                 <button className="btn btn-primary" onClick={handleSave}>
