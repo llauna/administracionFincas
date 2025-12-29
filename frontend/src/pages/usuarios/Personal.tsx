@@ -1,172 +1,89 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAuthHeader, validarToken } from "../../services/auth";
+import React, { useState, useEffect } from 'react';
+import { Container, Table, Button, Spinner, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { EmpleadoService } from '../../services/EmpleadoService';
+import { LinkContainer } from 'react-router-bootstrap';
 
-interface User {
-    _id: string;
-    nombreCompleto: string;
-    email: string;
-    role: "admin" | "editor" | "viewer";
-    puesto: string;
-    departamento: string;
-    fechaContratacion: string;
-    telefono: string;
-    direccion: string;
-}
-
-const Personal = () => {
+const Personal: React.FC = () => {
     const navigate = useNavigate();
-    const [users, setUsers] = useState<User[]>([]);
+    const [empleados, setEmpleados] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-    const [currentUserRole, setCurrentUserRole] = useState<"admin" | "editor" | "viewer">("viewer");
+    const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Obtener rol del usuario logueado
-                const tokenData = await validarToken();
-                setCurrentUserRole(tokenData.user.role);
-
-                // Obtener lista de usuarios
-                const response = await fetch("/api/users", {
-                    headers: getAuthHeader(),
-                });
-
-                if (!response.ok) {
-                    let errorMessage = `Error ${response.status}: No se pudo cargar la lista de usuarios`;
-                    try {
-                        const errorData = await response.json();
-                        if (errorData?.mensaje) {
-                            errorMessage = errorData.mensaje;
-                        }
-                    } catch {
-                        // Si no es JSON válido, mantenemos el mensaje por defecto
-                    }
-                    throw new Error(errorMessage);
-                }
-
-                const data = await response.json();
-                setUsers(data);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Error desconocido al cargar los usuarios");
-                console.error("Error al cargar los usuarios:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, []);
-
-    const canCreate = currentUserRole === "admin";
-    const canEdit = currentUserRole === "admin";
-    const canDelete = currentUserRole === "admin";
-
-    const handleDelete = async (userId: string) => {
-        if (!window.confirm("¿Estás seguro de eliminar este usuario?")) return;
-
+    const fetchEmpleados = async () => {
         try {
-            const response = await fetch(`/api/users/${userId}`, {
-                method: "DELETE",
-                headers: getAuthHeader(),
-            });
-
-            if (!response.ok) throw new Error("Error al eliminar el usuario");
-
-            setUsers(users.filter((user) => user._id !== userId));
-            setSuccess("Usuario eliminado correctamente");
-            setTimeout(() => setSuccess(""), 3000);
+            setLoading(true);
+            const data = await EmpleadoService.getAll();
+            setEmpleados(data);
         } catch (err) {
-            console.error("Error al eliminar usuario:", err);
-            setError("No se pudo eliminar el usuario");
-            setTimeout(() => setError(""), 3000);
+            setError('Error al cargar la lista de empleados');
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
     };
 
-    if (loading) return <div className="container mt-5">Cargando usuarios...</div>;
+    useEffect(() => {
+        fetchEmpleados();
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm('¿Estás seguro de que deseas eliminar a este empleado?')) {
+            try {
+                await EmpleadoService.delete(id);
+                fetchEmpleados();
+            } catch (err) {
+                setError('Error al eliminar el empleado');
+            }
+        }
+    };
+
+    if (loading) return <div className="text-center mt-5"><Spinner animation="border" /></div>;
 
     return (
-        <div className="container mt-4">
+        <Container className="mt-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h1>Gestión de Usuarios</h1>
-                {canCreate && (
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => navigate("/personal/nuevo")}
-                    >
-                        Nuevo Usuario
-                    </button>
-                )}
+                <h2>Listado de Personal</h2>
+                <div>
+                    <LinkContainer to="/personal/nuevo">
+                        <Button variant="success" className="me-2">Nuevo Empleado</Button>
+                    </LinkContainer>
+                    <Button variant="secondary" onClick={() => navigate('/gestion-usuarios')}>Volver</Button>
+                </div>
             </div>
 
-            {error && <div className="alert alert-danger">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
+            {error && <Alert variant="danger">{error}</Alert>}
 
-            <div className="table-responsive">
-                <table className="table table-hover">
-                    <thead className="table-light">
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Rol</th>
-                        <th>Puesto</th>
-                        <th>Departamento</th>
-                        <th>Acciones</th>
+            <Table striped bordered hover responsive>
+                <thead className="table-dark">
+                <tr>
+                    <th>Nombre</th>
+                    <th>DNI</th>
+                    <th>Puesto</th>
+                    <th>Email</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                {empleados.map((emp) => (
+                    <tr key={emp._id}>
+                        <td>{emp.nombre}</td>
+                        <td>{emp.dni}</td>
+                        <td>{emp.puesto}</td>
+                        <td>{emp.email}</td>
+                        <td>
+                            <LinkContainer to={`/personal/editar/${emp._id}`}>
+                                <Button variant="info" size="sm" className="me-2">Editar</Button>
+                            </LinkContainer>
+                            <Button variant="danger" size="sm" onClick={() => handleDelete(emp._id)}>
+                                Eliminar
+                            </Button>
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {users.map((user) => (
-                        <tr key={user._id}>
-                            <td>{user.nombreCompleto}</td>
-                            <td>{user.email}</td>
-                            <td>
-                                    <span className={`badge ${
-                                        user.role === "admin" ? "bg-danger" :
-                                            user.role === "editor" ? "bg-primary" : "bg-secondary"
-                                    }`}>
-                                        {user.role}
-                                    </span>
-                            </td>
-                            <td>{user.puesto}</td>
-                            <td>{user.departamento}</td>
-                            <td>
-                                <div className="btn-group" role="group">
-                                    {canEdit && (
-                                        <button
-                                            className="btn btn-primary me-2"
-                                            onClick={() => navigate(`/personal/editar/${user._id}`)}
-                                        >
-                                            Editar
-                                        </button>
-                                    )}
-                                    {canDelete && (
-                                        <button
-                                            className="btn btn-danger"
-                                            onClick={() => handleDelete(user._id)}
-                                        >
-                                            Eliminar
-                                        </button>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="d-flex gap-3 mt-4">
-                {/* Botón Volver */}
-                <button
-                    className="btn btn-secondary"
-                    onClick={() => navigate("/items")}
-                >
-                    Volver a Items
-                </button>
-            </div>
-        </div>
-
+                ))}
+                </tbody>
+            </Table>
+        </Container>
     );
 };
 

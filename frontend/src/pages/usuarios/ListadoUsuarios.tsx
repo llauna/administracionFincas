@@ -1,0 +1,258 @@
+// src/pages/usuarios/ListadoUsuarios.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Table, Button, Spinner, Alert, Badge } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { UserService } from '../../services/UserService';
+import { EmpleadoService } from '../../services/EmpleadoService';
+import { toast } from 'react-toastify';
+
+type UserRole = 'admin' | 'editor' | 'viewer' | 'empleado';
+
+interface Usuario {
+    _id?: string;
+    username: string;
+    email: string;
+    role: UserRole;
+    nombreCompleto: string;
+    telefono?: string;
+    fechaContratacion?: string | Date;
+    tipo: 'usuario' | 'empleado' | 'propietario';
+    isActive?: boolean;
+    // Agrega cualquier otra propiedad que puedan tener los empleados
+    nombre?: string;
+    apellidos?: string;
+}
+const ListadoUsuarios: React.FC = () => {
+    const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const navigate = useNavigate();
+
+    const cargarUsuarios = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Obtener usuarios del sistema
+            const [usuariosSistema, empleados] = await Promise.all([
+                UserService.getAll().catch((error) => {
+                    console.error('Error al cargar usuarios del sistema:', error);
+                    return []; // Devuelve array vacío en caso de error
+                }),
+                EmpleadoService.getAll().catch((error) => {
+                    console.error('Error al cargar empleados:', error);
+                    return []; // Devuelve array vacío en caso de error
+                })
+            ]);
+
+            // Mapear empleados al formato de usuario
+            const empleadosMapeados = empleados.map(emp => ({
+                _id: emp._id || '',
+                username: emp.email || '',
+                email: emp.email || '',
+                role: 'empleado' as UserRole,
+                nombreCompleto: emp.nombreCompleto || `${emp.nombre || ''} ${emp.apellidos || ''}`.trim(),
+                telefono: emp.telefono,
+                fechaContratacion: emp.fechaInicio,
+                tipo: 'empleado' as const,
+                isActive: true,
+                // Mantener las propiedades originales por si se necesitan
+                ...emp
+            }));
+
+            // Mapear usuarios del sistema
+            const usuariosMapeados = usuariosSistema.map(user => ({
+                ...user,
+                tipo: 'usuario' as const,
+                nombreCompleto: user.nombreCompleto || `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.username
+            }));
+
+            // Combinar y ordenar usuarios
+            const todosUsuarios = [
+                ...usuariosMapeados,
+                ...empleadosMapeados
+            ].filter(u => u.nombreCompleto) // Asegurarse de que nombreCompleto existe
+                .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto));
+
+            setUsuarios(todosUsuarios);
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Error al cargar la lista de usuarios';
+            console.error('Error al cargar usuarios:', errorMessage);
+            setError(errorMessage);
+            toast.error('Error al cargar los usuarios');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        cargarUsuarios();
+    }, [cargarUsuarios]);
+
+    const handleEliminarUsuario = async (id: string, tipo: string) => {
+        if (!window.confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+            return;
+        }
+
+        try {
+            setDeletingId(id);
+
+            if (tipo === 'empleado') {
+                await EmpleadoService.delete(id);
+            } else {
+                await UserService.delete(id);
+            }
+
+            // Actualizar la lista de usuarios
+            setUsuarios(prev => prev.filter(u => u._id !== id));
+            toast.success('Usuario eliminado correctamente');
+        } catch (err: any) {
+            console.error('Error al eliminar usuario:', err);
+            toast.error(err.message || 'Error al eliminar el usuario');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const getBadgeVariant = (role: string) => {
+        switch (role.toLowerCase()) {
+            case 'admin':
+                return 'danger';
+            case 'empleado':
+                return 'success';
+            case 'propietario':
+                return 'primary';
+            case 'editor':
+                return 'warning';
+            case 'viewer':
+                return 'info';
+            default:
+                return 'secondary';
+        }
+    };
+
+    if (loading && usuarios.length === 0) {
+        return (
+            <Container className="mt-4 text-center">
+                <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Cargando...</span>
+                </Spinner>
+                <p>Cargando usuarios...</p>
+            </Container>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container className="mt-4">
+                <Alert variant="danger">
+                    {error}
+                    <div className="mt-2">
+                        <Button variant="outline-danger" size="sm" onClick={cargarUsuarios}>
+                            Reintentar
+                        </Button>
+                    </div>
+                </Alert>
+            </Container>
+        );
+    }
+
+    return (
+        <Container className="mt-4">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h2>Listado de Usuarios</h2>
+                <div>
+                    <Button
+                        variant="secondary"
+                        onClick={() => navigate(-1)}
+                        className="me-2"
+                    >
+                        Volver
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={() => navigate('/usuarios/nuevo')}
+                    >
+                        Nuevo Usuario
+                    </Button>
+                </div>
+            </div>
+
+            <div className="table-responsive">
+                <Table striped bordered hover>
+                    <thead className="table-dark">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Usuario</th>
+                        <th>Email</th>
+                        <th>Rol</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {usuarios.length > 0 ? (
+                        usuarios.map((usuario) => (
+                            <tr key={`${usuario.tipo}-${usuario._id}`}>
+                                <td>{usuario.nombreCompleto}</td>
+                                <td>{usuario.username}</td>
+                                <td>{usuario.email}</td>
+                                <td>
+                                    <Badge bg={getBadgeVariant(usuario.role)}>
+                                        {usuario.role}
+                                    </Badge>
+                                </td>
+                                <td>
+                                    <Badge bg="info">
+                                        {usuario.tipo}
+                                    </Badge>
+                                </td>
+                                <td>
+                                    <Badge bg={usuario.isActive === false ? 'secondary' : 'success'}>
+                                        {usuario.isActive === false ? 'Inactivo' : 'Activo'}
+                                    </Badge>
+                                </td>
+                                <td>
+                                    <div className="d-flex gap-2">
+                                        <Button
+                                            variant="outline-primary"
+                                            size="sm"
+                                            onClick={() => navigate(`/usuarios/editar/${usuario._id}?tipo=${usuario.tipo}`)}
+                                            title="Editar"
+                                        >
+                                            <i className="bi bi-pencil"></i>
+                                        </Button>
+                                        <Button
+                                            variant="outline-danger"
+                                            size="sm"
+                                            onClick={() => handleEliminarUsuario(usuario._id || '', usuario.tipo)}
+                                            disabled={deletingId === usuario._id}
+                                            title="Eliminar"
+                                        >
+                                            {deletingId === usuario._id ? (
+                                                <Spinner animation="border" size="sm" />
+                                            ) : (
+                                                <i className="bi bi-trash"></i>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan={7} className="text-center">
+                                No se encontraron usuarios
+                            </td>
+                        </tr>
+                    )}
+                    </tbody>
+                </Table>
+            </div>
+        </Container>
+    );
+};
+
+export default ListadoUsuarios;

@@ -1,18 +1,19 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuthHeader } from "../../services/auth";
+import { EmpleadoService } from '../../services/EmpleadoService';
 
 interface User {
     username: string;
     nombreCompleto: string;
     email: string;
-    role: "admin" | "editor" | "viewer";
+    role: "admin" | "editor" | "viewer" | "empleado";
     puesto: string;
     departamento: string;
     fechaContratacion: string;
     telefono: string;
     direccion: string;
     password: string;
+    confirmPassword: string;
 }
 
 const NuevoUsuario = () => {
@@ -21,27 +22,86 @@ const NuevoUsuario = () => {
         username: "",
         nombreCompleto: "",
         email: "",
-        role: "viewer",
+        role: "empleado",
         puesto: "",
         departamento: "",
-        fechaContratacion: "",
+        fechaContratacion: new Date().toISOString().split('T')[0],
         telefono: "",
         direccion: "",
-        password: ""
+        password: "",
+        confirmPassword: ""
     });
 
+    const [errors, setErrors] = useState<Partial<User>>({});
 
-    const handleSave = async () => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setUser(prev => ({
+            ...prev,
+            [name]: value
+        }));
+
+        // Limpiar el error del campo cuando el usuario empieza a escribir
+        if (errors[name as keyof User]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: undefined
+            }));
+        }
+    };
+
+    const validateForm = (): boolean => {
+        const newErrors: Partial<User> = {};
+
+        if (!user.username.trim()) newErrors.username = "El nombre de usuario es requerido";
+        if (!user.nombreCompleto.trim()) newErrors.nombreCompleto = "El nombre completo es requerido";
+        if (!user.email) {
+            newErrors.email = "El email es requerido";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
+            newErrors.email = "El email no es válido";
+        }
+        if (!user.password) {
+            newErrors.password = "La contraseña es requerida";
+        } else if (user.password.length < 6) {
+            newErrors.password = "La contraseña debe tener al menos 6 caracteres";
+        }
+        if (user.password !== user.confirmPassword) {
+            newErrors.confirmPassword = "Las contraseñas no coinciden";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
         try {
-            const res = await fetch(`/api/users`, {
-                method: "POST",
-                headers: getAuthHeader(),
-                body: JSON.stringify(user),
-            });
-            if (!res.ok) throw new Error("Error al crear usuario");
-            navigate("/personal");
-        } catch (err) {
-            console.error(err);
+            const datosUsuario = {
+                username: user.username,
+                nombre: user.nombreCompleto,
+                email: user.email,
+                password: user.password,
+                role: user.role,
+                puesto: user.puesto,
+                departamento: user.departamento,
+                fechaContratacion: user.fechaContratacion,
+                telefono: user.telefono,
+                direccion: user.direccion
+            };
+
+            const response = await EmpleadoService.create(datosUsuario);
+
+            if (response) {
+                alert("Usuario creado con éxito");
+                navigate('/gestion-usuarios');
+            }
+        } catch (error: any) {
+            console.error("Error al crear usuario:", error);
+            const errorMessage = error.response?.data?.message || "Error al crear el usuario";
+            alert(`Error: ${errorMessage}`);
         }
     };
 
@@ -49,119 +109,139 @@ const NuevoUsuario = () => {
         <div className="container mt-4" style={{ maxWidth: "700px" }}>
             <h1 className="mb-4">Nuevo Usuario</h1>
 
-            <div className="mb-3">
-                <label>Nombre de usuario</label>
-                <input
-                    type="text"
-                    className="form-control"
-                    value={user.username}
-                    onChange={(e) => setUser({ ...user, username: e.target.value })}
-                />
-            </div>
-
-            <div className="mb-3">
-                <label>Nombre completo</label>
-                <input
-                    type="text"
-                    className="form-control"
-                    value={user.nombreCompleto}
-                    onChange={(e) => setUser({ ...user, nombreCompleto: e.target.value })}
-                />
-            </div>
-
-            <div className="mb-3">
-                <label>Email</label>
-                <input
-                    type="email"
-                    className="form-control"
-                    value={user.email}
-                    onChange={(e) => setUser({ ...user, email: e.target.value })}
-                />
-            </div>
-
-            <div className="mb-3">
-                <label>Contraseña</label>
-                <input
-                    type="password"
-                    className="form-control"
-                    value={user.password}
-                    onChange={(e) => setUser({ ...user, password: e.target.value })}
-                />
-            </div>
-
-            <div className="row">
-                <div className="col-md-6 mb-3">
-                    <label>Puesto</label>
+            <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                    <label className="form-label">Nombre de usuario *</label>
                     <input
                         type="text"
+                        name="username"
+                        className={`form-control ${errors.username ? 'is-invalid' : ''}`}
+                        value={user.username}
+                        onChange={handleChange}
+                    />
+                    {errors.username && <div className="invalid-feedback">{errors.username}</div>}
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label">Nombre completo *</label>
+                    <input
+                        type="text"
+                        name="nombreCompleto"
+                        className={`form-control ${errors.nombreCompleto ? 'is-invalid' : ''}`}
+                        value={user.nombreCompleto}
+                        onChange={handleChange}
+                    />
+                    {errors.nombreCompleto && <div className="invalid-feedback">{errors.nombreCompleto}</div>}
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label">Email *</label>
+                    <input
+                        type="email"
+                        name="email"
+                        className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+                        value={user.email}
+                        onChange={handleChange}
+                    />
+                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label">Rol</label>
+                    <select
+                        name="role"
+                        className="form-select"
+                        value={user.role}
+                        onChange={handleChange}
+                    >
+                        <option value="admin">Administrador</option>
+                        <option value="editor">Editor</option>
+                        <option value="viewer">Visualizador</option>
+                        <option value="empleado">Empleado</option>
+                    </select>
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label">Contraseña *</label>
+                    <input
+                        type="password"
+                        name="password"
+                        className={`form-control ${errors.password ? 'is-invalid' : ''}`}
+                        value={user.password}
+                        onChange={handleChange}
+                    />
+                    {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label">Confirmar Contraseña *</label>
+                    <input
+                        type="password"
+                        name="confirmPassword"
+                        className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
+                        value={user.confirmPassword}
+                        onChange={handleChange}
+                    />
+                    {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword}</div>}
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label">Puesto</label>
+                    <input
+                        type="text"
+                        name="puesto"
                         className="form-control"
                         value={user.puesto}
-                        onChange={(e) => setUser({ ...user, puesto: e.target.value })}
+                        onChange={handleChange}
                     />
                 </div>
-                <div className="col-md-6 mb-3">
-                    <label>Departamento</label>
+
+                <div className="mb-3">
+                    <label className="form-label">Departamento</label>
                     <input
                         type="text"
+                        name="departamento"
                         className="form-control"
                         value={user.departamento}
-                        onChange={(e) => setUser({ ...user, departamento: e.target.value })}
+                        onChange={handleChange}
                     />
                 </div>
-            </div>
 
-            <div className="row">
-                <div className="col-md-6 mb-3">
-                    <label>Fecha de contratación</label>
+                <div className="mb-3">
+                    <label className="form-label">Teléfono</label>
                     <input
-                        type="date"
-                        className="form-control"
-                        value={user.fechaContratacion}
-                        onChange={(e) => setUser({ ...user, fechaContratacion: e.target.value })}
-                    />
-                </div>
-                <div className="col-md-6 mb-3">
-                    <label>Teléfono</label>
-                    <input
-                        type="text"
+                        type="tel"
+                        name="telefono"
                         className="form-control"
                         value={user.telefono}
-                        onChange={(e) => setUser({ ...user, telefono: e.target.value })}
+                        onChange={handleChange}
                     />
                 </div>
-            </div>
 
-            <div className="mb-3">
-                <label>Dirección</label>
-                <input
-                    type="text"
-                    className="form-control"
-                    value={user.direccion}
-                    onChange={(e) => setUser({ ...user, direccion: e.target.value })}
-                />
-            </div>
+                <div className="mb-3">
+                    <label className="form-label">Dirección</label>
+                    <textarea
+                        name="direccion"
+                        className="form-control"
+                        value={user.direccion}
+                        onChange={handleChange}
+                        rows={3}
+                    />
+                </div>
 
-            <div className="mb-3">
-                <label>Rol</label>
-                <select
-                    className="form-select"
-                    value={user.role}
-                    onChange={(e) => setUser({ ...user, role: e.target.value as User["role"] })}
-                >
-                    <option value="admin">Admin</option>
-                    <option value="editor">Editor</option>
-                    <option value="viewer">Viewer</option>
-                </select>
-            </div>
-
-            <div className="d-flex gap-2">
-                <button className="btn btn-secondary" onClick={() => navigate("/personal")}>
-                    Cancelar
-                </button>
-                <button className="btn btn-primary" onClick={handleSave}>
-                    Crear Usuario
-                </button>
-            </div>
+                <div className="d-flex justify-content-between mt-4">
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => navigate('/gestion-usuarios')}
+                    >
+                        Cancelar
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                        Guardar Usuario
+                    </button>
+                </div>
+            </form>
         </div>
     );
 };
