@@ -53,10 +53,17 @@ export async function validarToken() {
 }
 
 // === OBTENER HEADER DE AUTENTICACIÓN ===
-export function getAuthHeader() {
-    const token = localStorage.getItem('token');
+export function getAuthHeader(): Record<string, string> {
+    const token = getToken();
+    if (!token) {
+        console.warn('No se encontró token de autenticación');
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+    }
     return {
-        'Authorization': `Bearer ${token || ''}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };

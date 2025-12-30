@@ -1,3 +1,5 @@
+
+import { getAuthHeader } from './auth';
 import type {Propiedad, PropiedadDTO} from '../models/Propiedad';
 
 const API_URL = 'http://localhost:5000/api'; // Ajusta la URL de tu API
@@ -24,17 +26,25 @@ export const PropiedadService = {
 
     // Crear una nueva propiedad
     async create(propiedad: PropiedadDTO): Promise<Propiedad> {
-        const response = await fetch(`${API_URL}/propiedades`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(propiedad),
-        });
-        if (!response.ok) {
-            throw new Error('Error al crear la propiedad');
+        try {
+            const response = await fetch(`${API_URL}/propiedades`, {
+                method: 'POST',
+                headers: getAuthHeader(),  // Usamos directamente getAuthHeader() que ya incluye Content-Type
+                body: JSON.stringify(propiedad),
+            });
+
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Error al crear la propiedad');
+            }
+
+            return data;
+        } catch (error: any) {
+            console.error('Error en PropiedadService.create:', error);
+            throw new Error(error.message || 'Error al crear la propiedad');
         }
-        return response.json();
     },
 
     // Actualizar una propiedad existente

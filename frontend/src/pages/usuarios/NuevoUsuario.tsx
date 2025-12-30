@@ -1,264 +1,168 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { EmpleadoService } from '../../services/EmpleadoService';
+import React, { useState } from 'react';
+import { Container, Card, Form, Row, Col, Button, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { UserService } from '../../services/UserService';
+import { toast } from 'react-toastify';
 
-interface User {
-    username: string;
-    nombreCompleto: string;
-    email: string;
-    role: "admin" | "editor" | "viewer" | "empleado";
-    puesto: string;
-    departamento: string;
-    fechaContratacion: string;
-    telefono: string;
-    direccion: string;
-    password: string;
-    confirmPassword: string;
-}
-
-const NuevoUsuario = () => {
+const NuevoUsuario: React.FC = () => {
     const navigate = useNavigate();
-    const [user, setUser] = useState<User>({
-        username: "",
-        nombreCompleto: "",
-        email: "",
-        role: "empleado",
-        puesto: "",
-        departamento: "",
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const [formData, setFormData] = useState<any>({
+        username: '',
+        nombreCompleto: '',
+        email: '',
+        password: '',
+        role: 'viewer',
+        tipo: 'usuario', // Valor por defecto para clientes
+        puesto: '',
+        departamento: '',
         fechaContratacion: new Date().toISOString().split('T')[0],
-        telefono: "",
-        direccion: "",
-        password: "",
-        confirmPassword: ""
+        telefono: '',
+        direccion: ''
     });
-
-    const [errors, setErrors] = useState<Partial<User>>({});
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setUser(prev => ({
-            ...prev,
-            [name]: value
-        }));
-
-        // Limpiar el error del campo cuando el usuario empieza a escribir
-        if (errors[name as keyof User]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: undefined
-            }));
-        }
-    };
-
-    const validateForm = (): boolean => {
-        const newErrors: Partial<User> = {};
-
-        if (!user.username.trim()) newErrors.username = "El nombre de usuario es requerido";
-        if (!user.nombreCompleto.trim()) newErrors.nombreCompleto = "El nombre completo es requerido";
-        if (!user.email) {
-            newErrors.email = "El email es requerido";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
-            newErrors.email = "El email no es válido";
-        }
-        if (!user.password) {
-            newErrors.password = "La contraseña es requerida";
-        } else if (user.password.length < 6) {
-            newErrors.password = "La contraseña debe tener al menos 6 caracteres";
-        }
-        if (user.password !== user.confirmPassword) {
-            newErrors.confirmPassword = "Las contraseñas no coinciden";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!validateForm()) return;
+        setLoading(true);
+        setError(null);
 
         try {
-            const datosUsuario = {
-                username: user.username,
-                nombre: user.nombreCompleto,
-                email: user.email,
-                password: user.password,
-                role: user.role,
-                puesto: user.puesto,
-                departamento: user.departamento,
-                fechaContratacion: user.fechaContratacion,
-                telefono: user.telefono,
-                direccion: user.direccion
-            };
-
-            const response = await EmpleadoService.create(datosUsuario);
-
-            if (response) {
-                alert("Usuario creado con éxito");
-                navigate('/gestion-usuarios');
-            }
-        } catch (error: any) {
-            console.error("Error al crear usuario:", error);
-            const errorMessage = error.response?.data?.message || "Error al crear el usuario";
-            alert(`Error: ${errorMessage}`);
+            // Enviamos el formData completo que ya incluye el campo 'tipo'
+            await UserService.create(formData);
+            toast.success('Usuario registrado correctamente');
+            navigate('/usuarios/listado');
+        } catch (err: any) {
+            const msg = err.response?.data?.mensaje || 'Error al registrar el usuario';
+            setError(msg);
+            toast.error(msg);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="container py-3" style={{ maxWidth: "600px" }}>
-            <h3 className="mb-3">Nuevo Usuario</h3>
+        <Container className="mt-4" style={{ maxWidth: '800px' }}>
+            <Card className="shadow-sm">
+                <Card.Header className="bg-primary text-white">
+                    <h4 className="mb-0">Registrar Nuevo Usuario / Empleado</h4>
+                </Card.Header>
+                <Card.Body className="p-4">
+                    {error && <Alert variant="danger">{error}</Alert>}
 
-            <form onSubmit={handleSubmit} className="needs-validation" noValidate>
-                <div className="row g-3">
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Nombre de usuario *</label>
-                        <input
-                            type="text"
-                            name="username"
-                            className={`form-control form-control-sm ${errors.username ? 'is-invalid' : ''}`}
-                            value={user.username}
-                            onChange={handleChange}
-                        />
-                        {errors.username && <div className="invalid-feedback">{errors.username}</div>}
-                    </div>
+                    <Form onSubmit={handleSubmit}>
+                        <Row className="mb-3">
+                            <Form.Group as={Col} md="6">
+                                <Form.Label>Nombre Completo</Form.Label>
+                                <Form.Control
+                                    required
+                                    type="text"
+                                    placeholder="Ej: Juan Pérez"
+                                    value={formData.nombreCompleto}
+                                    onChange={e => setFormData({...formData, nombreCompleto: e.target.value})}
+                                />
+                            </Form.Group>
+                            <Form.Group as={Col} md="6">
+                                <Form.Label>Tipo de Usuario</Form.Label>
+                                <Form.Select
+                                    value={formData.tipo}
+                                    onChange={e => setFormData({...formData, tipo: e.target.value})}
+                                >
+                                    <option value="usuario">Cliente / Usuario General</option>
+                                    <option value="empleado">Empleado Interno</option>
+                                    <option value="propietario">Propietario</option>
+                                </Form.Select>
+                            </Form.Group>
+                        </Row>
 
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Nombre completo *</label>
-                        <input
-                            type="text"
-                            name="nombreCompleto"
-                            className={`form-control form-control-sm ${errors.nombreCompleto ? 'is-invalid' : ''}`}
-                            value={user.nombreCompleto}
-                            onChange={handleChange}
-                        />
-                        {errors.nombreCompleto && <div className="invalid-feedback">{errors.nombreCompleto}</div>}
-                    </div>
+                        <Row className="mb-3">
+                            <Form.Group as={Col} md="6">
+                                <Form.Label>Email (será el nombre de usuario)</Form.Label>
+                                <Form.Control
+                                    required
+                                    type="email"
+                                    placeholder="correo@ejemplo.com"
+                                    value={formData.email}
+                                    onChange={e => setFormData({...formData, email: e.target.value, username: e.target.value})}
+                                />
+                            </Form.Group>
+                            <Form.Group as={Col} md="6">
+                                <Form.Label>Contraseña</Form.Label>
+                                <Form.Control
+                                    required
+                                    type="password"
+                                    placeholder="Mínimo 6 caracteres"
+                                    value={formData.password}
+                                    onChange={e => setFormData({...formData, password: e.target.value})}
+                                />
+                            </Form.Group>
+                        </Row>
 
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Email *</label>
-                        <input
-                            type="email"
-                            name="email"
-                            className={`form-control form-control-sm ${errors.email ? 'is-invalid' : ''}`}
-                            value={user.email}
-                            onChange={handleChange}
-                        />
-                        {errors.email && <div className="invalid-feedback">{errors.email}</div>}
-                    </div>
+                        {/* Campos específicos para empleados */}
+                        {formData.tipo === 'empleado' && (
+                            <Row className="mb-3 border rounded p-3 bg-light mx-0">
+                                <Col md={6}>
+                                    <Form.Group>
+                                        <Form.Label>Puesto / Cargo</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            value={formData.puesto}
+                                            onChange={e => setFormData({...formData, puesto: e.target.value})}
+                                            placeholder="Ej: Contable"
+                                            required={formData.tipo === 'empleado'}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Group>
+                                        <Form.Label>Departamento</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            value={formData.departamento}
+                                            onChange={e => setFormData({...formData, departamento: e.target.value})}
+                                            placeholder="Ej: Administración"
+                                            required={formData.tipo === 'empleado'}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                        )}
 
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Rol</label>
-                        <select
-                            name="role"
-                            className="form-select form-select-sm"
-                            value={user.role}
-                            onChange={handleChange}
-                        >
-                            <option value="admin">Administrador</option>
-                            <option value="editor">Editor</option>
-                            <option value="viewer">Visualizador</option>
-                            <option value="empleado">Empleado</option>
-                        </select>
-                    </div>
+                        <Row className="mb-3">
+                            <Form.Group as={Col} md="6">
+                                <Form.Label>Teléfono</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    value={formData.telefono}
+                                    onChange={e => setFormData({...formData, telefono: e.target.value})}
+                                />
+                            </Form.Group>
+                            <Form.Group as={Col} md="6">
+                                <Form.Label>Rol en Sistema</Form.Label>
+                                <Form.Select
+                                    value={formData.role}
+                                    onChange={e => setFormData({...formData, role: e.target.value})}
+                                >
+                                    <option value="viewer">Lector (Solo ver)</option>
+                                    <option value="editor">Editor (Puede modificar)</option>
+                                    <option value="admin">Administrador (Control total)</option>
+                                </Form.Select>
+                            </Form.Group>
+                        </Row>
 
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Contraseña *</label>
-                        <input
-                            type="password"
-                            name="password"
-                            className={`form-control form-control-sm ${errors.password ? 'is-invalid' : ''}`}
-                            value={user.password}
-                            onChange={handleChange}
-                        />
-                        {errors.password && <div className="invalid-feedback">{errors.password}</div>}
-                    </div>
-
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Confirmar Contraseña *</label>
-                        <input
-                            type="password"
-                            name="confirmPassword"
-                            className={`form-control form-control-sm ${errors.confirmPassword ? 'is-invalid' : ''}`}
-                            value={user.confirmPassword}
-                            onChange={handleChange}
-                        />
-                        {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword}</div>}
-                    </div>
-
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Puesto</label>
-                        <input
-                            type="text"
-                            name="puesto"
-                            className="form-control form-control-sm"
-                            value={user.puesto}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Departamento</label>
-                        <input
-                            type="text"
-                            name="departamento"
-                            className="form-control form-control-sm"
-                            value={user.departamento}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Teléfono</label>
-                        <input
-                            type="tel"
-                            name="telefono"
-                            className="form-control form-control-sm"
-                            value={user.telefono}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="col-md-6">
-                        <label className="form-label small fw-bold">Fecha de Contratación</label>
-                        <input
-                            type="date"
-                            name="fechaContratacion"
-                            className="form-control form-control-sm"
-                            value={user.fechaContratacion}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="col-12">
-                        <label className="form-label small fw-bold">Dirección</label>
-                        <textarea
-                            name="direccion"
-                            className="form-control form-control-sm"
-                            rows={2}
-                            value={user.direccion}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="col-12 mt-3 d-flex justify-content-between">
-                        <button
-                            type="button"
-                            className="btn btn-outline-secondary btn-sm"
-                            onClick={() => navigate(-1)}
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            className="btn btn-primary btn-sm"
-                        >
-                            Guardar Usuario
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
+                        <div className="d-flex justify-content-end gap-2 mt-4">
+                            <Button variant="outline-secondary" onClick={() => navigate(-1)}>
+                                Cancelar
+                            </Button>
+                            <Button variant="primary" type="submit" disabled={loading}>
+                                {loading ? 'Registrando...' : 'Registrar Usuario'}
+                            </Button>
+                        </div>
+                    </Form>
+                </Card.Body>
+            </Card>
+        </Container>
     );
 };
 

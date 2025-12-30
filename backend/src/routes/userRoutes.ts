@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User, { IUser } from '../models/User';
 import { authenticate, AuthRequest } from '../middleware/authMiddleware';
 import { authorizeAdmin } from '../middleware/adminMiddleware';
+import {getTodosLosUsuarios} from "../controllers/empleadoController";
 
 const router = Router();
 
@@ -10,15 +11,7 @@ const router = Router();
  * === LISTAR TODOS LOS USUARIOS ===
  * Solo accesible para admin
  */
-router.get('/', authenticate, authorizeAdmin, async (req: AuthRequest, res: Response) => {
-    try {
-        const users = await User.find().select('-password');
-        res.json(users);
-    } catch (error) {
-        console.error('Error al obtener usuarios:', error);
-        res.status(500).json({ mensaje: 'Error en el servidor' });
-    }
-});
+router.get('/', authenticate, authorizeAdmin, getTodosLosUsuarios);
 
 /**
  * === OBTENER USUARIO POR ID ===
@@ -46,7 +39,7 @@ router.post('/', authenticate, authorizeAdmin, async (req: AuthRequest, res: Res
 
         console.log("📩 Datos recibidos en POST /api/users:", req.body);
 
-        const { username, nombreCompleto, email, password, role, puesto, departamento, fechaContratacion, telefono, direccion } = req.body;
+        const { username, nombreCompleto, email, password, role, puesto, departamento, fechaContratacion, telefono, direccion, tipo } = req.body;
 
         // Validar campos requeridos
         if (!username || !nombreCompleto || !email || !password || !puesto || !departamento || !fechaContratacion) {
@@ -70,6 +63,7 @@ router.post('/', authenticate, authorizeAdmin, async (req: AuthRequest, res: Res
             email,
             password: hashedPassword,
             role: role || 'viewer',
+            tipo: tipo || 'usuario',
             puesto,
             departamento,
             fechaContratacion,

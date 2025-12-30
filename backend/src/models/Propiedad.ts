@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const PropiedadSchema = new mongoose.Schema({
-    tipo: { type: String, enum: ['piso', 'local', 'garaje', 'trastero'], default: 'piso' },
+    tipo: { type: String, enum: ['piso', 'local', 'garaje', 'trastero', 'casa', 'otro'], default: 'piso' },
     direccion: { type: String, required: true },
     numero: { type: String },
     piso: { type: String },

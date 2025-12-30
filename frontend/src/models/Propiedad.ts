@@ -35,6 +35,7 @@ export interface PropiedadDTO {
     referencia: string;
     direccion: string;
     piso?: string;
+    portal?: string;
     puerta?: string;
     codigoPostal?: string;
     ciudad?: string;

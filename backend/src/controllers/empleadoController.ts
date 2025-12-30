@@ -1,13 +1,25 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
 
-export const getEmpleados = async (req: Request, res: Response) => {
+export const getTodosLosUsuarios = async (req: Request, res: Response) => {
     try {
-        // Suponiendo que los empleados son usuarios con el rol 'empleado'
-        const empleados = await User.find({ role: 'empleado' });
-        res.json(empleados);
+        const usuarios = await User.find({}, '-password');
+
+        // Mapeamos en el servidor para que el frontend reciba el formato final
+        const usuariosFormateados = usuarios.map(u => {
+            const userObj = u.toObject();
+            return {
+                ...userObj,
+                nombreCompleto: userObj.nombreCompleto || `${userObj.nombre || ''} ${userObj.apellidos || ''}`.trim() || userObj.username,
+                // Lógica de salvavidas: si no hay tipo, miramos el rol.
+                tipo: userObj.tipo || (userObj.role === 'admin' || userObj.role === 'empleado' ? 'empleado' : 'usuario'),
+                isActive: userObj.isActive ?? true
+            };
+        });
+
+        res.json(usuariosFormateados);
     } catch (error) {
-        res.status(500).json({ mensaje: 'Error al obtener empleados', error });
+        res.status(500).json({ mensaje: 'Error al obtener el listado unificado', error });
     }
 };
 

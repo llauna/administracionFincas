@@ -35,48 +35,13 @@ const ListadoUsuarios: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            // Obtener usuarios del sistema
-            const [usuariosSistema, empleados] = await Promise.all([
-                UserService.getAll().catch((error) => {
-                    console.error('Error al cargar usuarios del sistema:', error);
-                    return []; // Devuelve array vacío en caso de error
-                }),
-                EmpleadoService.getAll().catch((error) => {
-                    console.error('Error al cargar empleados:', error);
-                    return []; // Devuelve array vacío en caso de error
-                })
-            ]);
+            // Llamamos a un único servicio que ahora nos devuelve todo unificado
+            // Asumo que UserService.getAll() ahora apunta al nuevo endpoint del backend
+            const todosUsuarios = await UserService.getAll();
 
-            // Mapear empleados al formato de usuario
-            const empleadosMapeados = empleados.map(emp => ({
-                _id: emp._id || '',
-                username: emp.email || '',
-                email: emp.email || '',
-                role: 'empleado' as UserRole,
-                nombreCompleto: emp.nombreCompleto || `${emp.nombre || ''} ${emp.apellidos || ''}`.trim(),
-                telefono: emp.telefono,
-                fechaContratacion: emp.fechaInicio,
-                tipo: 'empleado' as const,
-                isActive: true,
-                // Mantener las propiedades originales por si se necesitan
-                ...emp
-            }));
-
-            // Mapear usuarios del sistema
-            const usuariosMapeados = usuariosSistema.map(user => ({
-                ...user,
-                tipo: 'usuario' as const,
-                nombreCompleto: user.nombreCompleto || `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.username
-            }));
-
-            // Combinar y ordenar usuarios
-            const todosUsuarios = [
-                ...usuariosMapeados,
-                ...empleadosMapeados
-            ].filter(u => u.nombreCompleto) // Asegurarse de que nombreCompleto existe
-                .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto));
-
-            setUsuarios(todosUsuarios);
+            setUsuarios(todosUsuarios.sort((a: Usuario, b: Usuario) =>
+                (a.nombreCompleto || '').localeCompare(b.nombreCompleto || '')
+            ));
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Error al cargar la lista de usuarios';
             console.error('Error al cargar usuarios:', errorMessage);
@@ -86,6 +51,7 @@ const ListadoUsuarios: React.FC = () => {
             setLoading(false);
         }
     }, []);
+
 
     useEffect(() => {
         cargarUsuarios();
@@ -166,7 +132,7 @@ const ListadoUsuarios: React.FC = () => {
                 <div>
                     <Button
                         variant="secondary"
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/dashboard')}
                         className="me-2"
                     >
                         Volver

@@ -25,6 +25,7 @@ const NuevoPropietario = () => {
         referencia: "",
         direccion: "",
         piso: "",
+        portal: "",
         puerta: "",
         tipo: "piso",    // Changed from "Piso" to match the type
         estado: "disponible",
@@ -32,11 +33,10 @@ const NuevoPropietario = () => {
         codigoPostal: "",
         ciudad: "",
         provincia: "",
-        pais: "",
-        metrosCuadrados: undefined,  // Changed from superficie
-        numHabitaciones: undefined,
-        numBanos: undefined,
-        observaciones: ""
+        pais: "España",
+        metrosCuadrados: 0,
+        numHabitaciones: 0,
+        numBanos: 1
     });
 
     const [empresas, setEmpresas] = useState<any[]>([]);
@@ -276,10 +276,28 @@ const NuevoPropietario = () => {
                                             <Form.Label>Referencia Catastral</Form.Label>
                                             <Form.Control
                                                 type="text"
-                                                name="referenciaCatastral"
+                                                name="referencia"
                                                 value={propiedadData.referencia}
                                                 onChange={handlePropiedadChange}
                                             />
+                                        </Form.Group>
+                                    </div>
+                                </div>
+                                <div className="row">
+                                    <div className="col-md-12 mb-3">
+                                        <Form.Group controlId="formDireccionPropiedad">
+                                            <Form.Label>Dirección de la Propiedad *</Form.Label>
+                                            <Form.Control
+                                                required
+                                                type="text"
+                                                name="direccion"
+                                                value={propiedadData.direccion}
+                                                onChange={handlePropiedadChange}
+                                                placeholder="Calle, número, etc."
+                                            />
+                                            <Form.Control.Feedback type="invalid">
+                                                La dirección es obligatoria.
+                                            </Form.Control.Feedback>
                                         </Form.Group>
                                     </div>
                                 </div>
@@ -290,7 +308,7 @@ const NuevoPropietario = () => {
                                             <Form.Control
                                                 type="number"
                                                 step="0.01"
-                                                name="superficie"
+                                                name="metrosCuadrados"
                                                 value={propiedadData.metrosCuadrados}
                                                 onChange={handlePropiedadChange}
                                             />
@@ -302,7 +320,7 @@ const NuevoPropietario = () => {
                                             <Form.Control
                                                 type="text"
                                                 name="portal"
-                                                value={propiedadData.piso || ''}
+                                                value={propiedadData.portal || ''}
                                                 onChange={handlePropiedadChange}
                                             />
                                         </Form.Group>
