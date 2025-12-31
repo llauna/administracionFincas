@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { Container, Card, Form, Row, Col, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { UserService } from '../../services/UserService';
 import { toast } from 'react-toastify';
+import {PropiedadService} from "../../services/PropiedadService";
 
 const NuevoUsuario: React.FC = () => {
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [propiedades, setPropiedades] = useState<any[]>([]);
 
     const [formData, setFormData] = useState<any>({
         username: '',
@@ -41,6 +43,19 @@ const NuevoUsuario: React.FC = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const cargarPropiedades = async () => {
+            try {
+                const data = await PropiedadService.getAll();
+                setPropiedades(data);
+            } catch (err) {
+                console.error("Error al cargar propiedades");
+            }
+        };
+        cargarPropiedades();
+    }, []);
+
 
     return (
         <Container className="mt-4" style={{ maxWidth: '800px' }}>
@@ -150,6 +165,21 @@ const NuevoUsuario: React.FC = () => {
                                 </Form.Select>
                             </Form.Group>
                         </Row>
+
+                        {formData.tipo === 'usuario' && (
+                            <Form.Group className="mb-3">
+                                <Form.Label>Vincular con Propiedad</Form.Label>
+                                <Form.Select
+                                    value={formData.propiedad || ''}
+                                    onChange={e => setFormData({...formData, propiedad: e.target.value})}
+                                >
+                                    <option value="">Seleccione una propiedad...</option>
+                                    {propiedades.map(p => (
+                                        <option key={p._id} value={p._id}>{p.direccion} ({p.tipo})</option>
+                                    ))}
+                                </Form.Select>
+                            </Form.Group>
+                        )}
 
                         <div className="d-flex justify-content-end gap-2 mt-4">
                             <Button variant="outline-secondary" onClick={() => navigate(-1)}>

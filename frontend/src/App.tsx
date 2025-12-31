@@ -22,6 +22,7 @@ import EditarPropiedad from "./pages/propiedades/EditarPropiedad";
 import EditarComunidad from "./pages/comunidades/EditarComunidad";
 import NuevaComunidad from "./pages/comunidades/NuevaComunidad";
 import NuevoPropietario from "./pages/propietarios/NuevoPropietario";
+import EditarPropietario from "./pages/propietarios/EditarPropietario";
 import PropietariosPage from "./pages/propietarios/Propietario";
 
 function App() {
@@ -62,6 +63,7 @@ function AppContent() {
 
                     <Route path="/propietarios/nuevo" element={<PrivateRoute><NuevoPropietario /></PrivateRoute>} />
                     <Route path="/propietarios" element={<PrivateRoute><PropietariosPage /></PrivateRoute>} />
+                    <Route path="/propietarios/editar/:id" element={<PrivateRoute><EditarPropietario /></PrivateRoute>} />
 
                     <Route path="/personal" element={<PrivateRoute><Personal /></PrivateRoute>} />
                     <Route path="/personal/nuevo" element={<PrivateRoute><NuevoUsuario /></PrivateRoute>} />

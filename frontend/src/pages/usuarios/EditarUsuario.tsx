@@ -51,13 +51,14 @@ const EditarUsuario = () => {
         if (!user) return;
 
         const token = localStorage.getItem('token'); // Recuperamos el token directamente
+        const API_URL = 'http://localhost:5000/api';
 
         try {
             const userData = {
                 ...user,
                 tipo: user.tipo || tipoQuery
             };
-            const res = await fetch(`/api/users/${id}`, {
+            const res = await fetch(`${API_URL}/users/${id}`, {
                 method: "PUT",
                 headers: {
                     'Authorization': `Bearer ${token}`, // Lo enviamos explícitamente
@@ -70,8 +71,11 @@ const EditarUsuario = () => {
                 throw new Error("Tu sesión ha expirado. Por favor, vuelve a entrar.");
             }
 
-            if (!res.ok) throw new Error("Error al guardar cambios");
-            navigate("/usuarios/listado");
+            if (user.tipo === 'empleado') {
+                navigate("/personal");
+            } else {
+                navigate("/usuarios/listado");
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Error desconocido");
         }

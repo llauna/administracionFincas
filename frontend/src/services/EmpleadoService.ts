@@ -60,6 +60,9 @@ export const EmpleadoService = {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
         });
-        if (!response.ok) throw new Error('Error al eliminar el empleado');
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.mensaje || error.message || 'Error al eliminar el empleado');
+        }
     }
 };

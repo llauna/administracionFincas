@@ -11,21 +11,37 @@ const PropietariosPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchPropietarios = async () => {
-            try {
-                const data = await PropietarioService.getAll();
-                setPropietarios(data as IPropietario[]);
-            } catch (err) {
-                setError('Error al cargar los propietarios');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchPropietarios = async () => {
+        try {
+            setLoading(true);
+            const data = await PropietarioService.getAll();
+            setPropietarios(data as IPropietario[]);
+        } catch (err) {
+            setError('Error al cargar los propietarios');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
+        // Ahora el useEffect simplemente llama a la función externa
         fetchPropietarios();
     }, []);
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm('¿Estás seguro de que deseas eliminar este propietario?')) {
+            try {
+                await PropietarioService.delete(id);
+                // IMPORTANTE: Llama aquí a la función que recarga los datos (ej: fetchPropietarios)
+                await fetchPropietarios();
+                alert('Propietario eliminado con éxito');
+            } catch (err: any) {
+                alert(err.message);
+                console.error(err);
+            }
+        }
+    };
 
     if (loading) return <Spinner animation="border" />;
     if (error) return <Alert variant="danger">{error}</Alert>;
@@ -65,7 +81,7 @@ const PropietariosPage: React.FC = () => {
                                     Editar
                                 </Button>
                             </LinkContainer>
-                            <Button variant="danger" size="sm">
+                            <Button variant="danger" size="sm" onClick={() => handleDelete(propietario._id)}>
                                 Eliminar
                             </Button>
                         </td>
