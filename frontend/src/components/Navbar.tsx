@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import "../assets/styles/Navbar.css";
 import logo from "../assets/fincas.jpg";
 
@@ -27,7 +27,7 @@ const Navbar: React.FC = () => {
 
     const isAdmin = hasRole('admin');
     const isEmployee = hasRole('empleado');
-    const isClient = hasRole('cliente');
+    const isClient = hasRole(['cliente', 'viewer', 'propietario']);
 
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
@@ -119,6 +119,11 @@ const Navbar: React.FC = () => {
                                         <li><Link className="dropdown-item" to="/propiedades">Mis Propiedades</Link></li>
                                         <li><Link className="dropdown-item" to={`/incidencias/${user?._id || '#'}`}>Mis Incidencias</Link></li>
                                     </ul>
+                                </li>
+
+                                {/* Añadimos el menú de Perfil para el cliente */}
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/perfil">Mi Perfil</Link>
                                 </li>
                                 <li className="nav-item dropdown">
                                     <Link className="nav-link dropdown-toggle" to="#" id="documentacionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -1,43 +1,52 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
+import { login as loginService } from "../services/auth";
 import candado from "../assets/candado.svg";
-import React from "react";
+
+
 
 const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [mensaje, setMensaje] = useState("");
+    const [error, setError] = useState('');
 
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         try {
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify({email, password}),
-            });
+            // Usamos el servicio centralizado
+            const data = await loginService(email, password);
 
-            const data = await res.json();
+            if (data.token && data.user) {
+                // Normalización más robusta
+                let finalRole = data.user.role || data.user.tipo || 'cliente';
 
-            if (res.ok) {
-                localStorage.setItem("token", data.token);
-                if (data.user) {
-                    localStorage.setItem("user", JSON.stringify(data.user));
+                // Si el backend envía 'viewer' o es tipo 'propietario', lo mapeamos a 'cliente' para el Navbar
+                if (finalRole === 'viewer' || data.user.tipo === 'propietario') {
+                    finalRole = 'cliente';
                 }
-                window.location.href = "/dashboard";
-                setMensaje("✅ Login correcto");
-                navigate("/dashboard");
+                // Normalización de datos del usuario
+                const userData = {
+                    ...data.user,
+                    role: data.user.role || data.user.tipo || 'cliente',
+                    tipo: data.user.tipo || data.user.role || 'cliente'
+                };
+
+                localStorage.setItem('user', JSON.stringify(userData));
+
+                // Actualizamos el contexto de autenticación
+                login(userData);
+                navigate('/dashboard');
             } else {
-                setMensaje(`❌ ${data.mensaje || "Error en login"}`);
+                throw new Error('Datos de usuario no recibidos');
             }
-        } catch (err:unknown) {
-            const error = err as Error;
-            setMensaje(`❌ Error: ${error.message}`);
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError(err.message || 'Error al iniciar sesión. Por favor, intenta de nuevo.');
         }
     };
 
@@ -73,9 +82,9 @@ const Login = () => {
                         Entrar
                     </button>
                 </form>
-                {mensaje && (
-                    <div className="mt-3 alert alert-info">
-                        {mensaje}
+                {error && (
+                    <div className="mt-3 alert alert-danger">
+                        {error}
                     </div>
                 )}
             </div>

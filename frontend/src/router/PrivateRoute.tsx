@@ -1,13 +1,22 @@
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 import React from "react";
-import { Navigate } from "react-router-dom";
 
-interface PrivateRouteProps {
-   children: React.ReactNode;
-}
+const PrivateRoute = () => {
+    const { user, loading } = useAuth();
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-    const token = localStorage.getItem("token");
-    return token ? children : <Navigate to="/login" replace />;
+    // Mientras el contexto recupera el token del localStorage, mostramos un loader
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        );
+    }
+// Si no hay usuario tras la carga, redirigimos al login
+    return user ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 export default PrivateRoute;

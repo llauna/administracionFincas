@@ -1,7 +1,8 @@
 // En App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import { ToastContainer } from 'react-toastify';
 import PrivateRoute from "./router/PrivateRoute";
 import Navbar from "./components/Navbar";
@@ -37,39 +38,52 @@ function App() {
 }
 
 function AppContent() {
-    const { isAuthenticated } = useAuth();
+    const { user, loading } = useAuth(); // Usamos 'user' y 'loading' del nuevo contexto
+
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
-            {isAuthenticated && <Navbar />}
+            {user && <Navbar />}
             <div className="main-content">
                 <Routes>
-                    <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
-                    <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace/> : <Login />} />
+                    {/* Redirección inicial */}
+                    <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
 
-                    {/* Rutas protegidas */}
-                    <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-                    <Route path="/empresa" element={<PrivateRoute><Empresa /></PrivateRoute>} />
-                    <Route path="/perfil" element={<PrivateRoute><Perfil /></PrivateRoute>} />
-                    <Route path="/gestion-usuarios" element={<PrivateRoute><GestionUsuarios /></PrivateRoute>} />
-                    <Route path="/usuarios/listado" element={<PrivateRoute><ListadoUsuarios /></PrivateRoute>} />
-                    <Route path="/comunidades" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
-                    <Route path="/comunidades/nueva" element={<PrivateRoute><NuevaComunidad /></PrivateRoute>} />
-                    <Route path="/comunidades/editar/:id" element={<PrivateRoute><EditarComunidad /></PrivateRoute>} />
+                    {/* Ruta de Login: si ya está logueado, lo mandamos al dashboard */}
+                    <Route path="/login" element={user ? <Navigate to="/dashboard" replace/> : <Login />} />
 
-                    <Route path="/propiedades" element={<PrivateRoute><Propiedades /></PrivateRoute>} />
-                    <Route path="/propiedades/nueva" element={<PrivateRoute><NuevaPropiedad /></PrivateRoute>} />
-                    <Route path="/propiedades/editar/:id" element={<PrivateRoute><EditarPropiedad /></PrivateRoute>} />
+                    {/* Grupo de Rutas Protegidas */}
+                    <Route element={<PrivateRoute />}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/empresa" element={<Empresa />} />
+                        <Route path="/perfil" element={<Perfil />} />
+                        <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
+                        <Route path="/usuarios/listado" element={<ListadoUsuarios />} />
+                        <Route path="/comunidades" element={<Comunidades />} />
+                        <Route path="/comunidades/nueva" element={<NuevaComunidad />} />
+                        <Route path="/comunidades/editar/:id" element={<EditarComunidad />} />
+                        <Route path="/propiedades" element={<Propiedades />} />
+                        <Route path="/propiedades/nueva" element={<NuevaPropiedad />} />
+                        <Route path="/propiedades/editar/:id" element={<EditarPropiedad />} />
+                        <Route path="/propietarios/nuevo" element={<NuevoPropietario />} />
+                        <Route path="/propietarios" element={<PropietariosPage />} />
+                        <Route path="/propietarios/editar/:id" element={<EditarPropietario />} />
+                        <Route path="/personal" element={<Personal />} />
+                        <Route path="/personal/nuevo" element={<NuevoUsuario />} />
+                        <Route path="/personal/editar/:id" element={<EditarUsuario />} />
+                    </Route>
 
-                    <Route path="/propietarios/nuevo" element={<PrivateRoute><NuevoPropietario /></PrivateRoute>} />
-                    <Route path="/propietarios" element={<PrivateRoute><PropietariosPage /></PrivateRoute>} />
-                    <Route path="/propietarios/editar/:id" element={<PrivateRoute><EditarPropietario /></PrivateRoute>} />
-
-                    <Route path="/personal" element={<PrivateRoute><Personal /></PrivateRoute>} />
-                    <Route path="/personal/nuevo" element={<PrivateRoute><NuevoUsuario /></PrivateRoute>} />
-                    <Route path="/personal/editar/:id" element={<PrivateRoute><EditarUsuario /></PrivateRoute>} />
-
-                    <Route path="*" element={<Navigate to="/login" />} />
+                    {/* Catch-all para rutas no encontradas */}
+                    <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
                 </Routes>
             </div>
             <Footer />

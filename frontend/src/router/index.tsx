@@ -2,55 +2,43 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Login from "../pages/Login";
-import Items from "../pages/Items";
+
 import EditarUsuario from "../pages/usuarios/EditarUsuario";
 import NuevoUsuario from "../pages/usuarios/NuevoUsuario";
-import PrivateRoute from "./PrivateRoute.tsx";
+import Dashboard from "../pages/Dashboard";
+import PrivateRoute from "./PrivateRoute";
+import { useAuth } from "../context/useAuth";
+import React from "react";
 
 function AppRoutes() {
-    const token = localStorage.getItem("token");
-    const isAuthenticated = !!token;
+    const { user } = useAuth();
     const location = useLocation();
+
+    // El Navbar se muestra si hay usuario y no estamos en el login
+    const showNavbar = user && location.pathname !== "/login";
 
     return (
         <>
-            {/* Mostrar Navbar solo si está autenticado y NO está en /login */}
-            {isAuthenticated && location.pathname !== "/login" && <Navbar />}
+            {showNavbar && <Navbar />}
             <Routes>
-                <Route path = "/personal/nuevo" element={
-                    <PrivateRoute>
-                        <NuevoUsuario />
-                    </PrivateRoute>
-                }>
-                </Route>
-            </Routes>
-            <Routes>
-                <Route path = "/personal/editar/:id" element={
-                    <PrivateRoute>
-                        <EditarUsuario />
-                    </PrivateRoute>
-                }>
-                </Route>
-            </Routes>
-
-            <Routes>
-                {/* Redirigir raíz a /login */}
-                <Route path="/" element={<Navigate to="/login" />} />
-
-                {/* Si ya está logueado y entra a /login, mandarlo a /items */}
+                {/* Rutas Públicas */}
                 <Route
                     path="/login"
-                    element={isAuthenticated ? <Navigate to="/items" /> : <Login />}
+                    element={user ? <Navigate to="/dashboard" replace /> : <Login />}
                 />
 
-                {/* Ruta protegida */}
-                <Route
-                    path="/items"
-                    element={isAuthenticated ? <Items /> : <Navigate to="/login" />}
-                />
+                {/* Rutas Protegidas (Todas dentro de un solo PrivateRoute) */}
+                <Route element={<PrivateRoute />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
 
-                {/* Cualquier ruta desconocida → login */}
-                <Route path="*" element={<Navigate to="/login" />} />
+                    <Route path="/personal/nuevo" element={<NuevoUsuario />} />
+                    <Route path="/personal/editar/:id" element={<EditarUsuario />} />
+                    {/* Agrega aquí más rutas que necesiten login */}
+                </Route>
+
+                {/* Redirecciones y errores */}
+                <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </>
     );
