@@ -60,6 +60,7 @@ const Incidencias = () => {
                     <th>Estado</th>
                     <th>Gravedad</th>
                     <th>Fecha Reporte</th>
+                    <th>Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -77,6 +78,11 @@ const Incidencias = () => {
                                     </span>
                             </td>
                             <td>{new Date(inc.fechaHoraReporte).toLocaleDateString()}</td>
+                            <td>
+                                <Button variant="link" onClick={() => navigate(`/incidencias/${inc._id}`)}>
+                                    {inc.titulo}
+                                </Button>
+                            </td>
                         </tr>
                     ))
                 ) : (

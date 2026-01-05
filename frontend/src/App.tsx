@@ -27,6 +27,7 @@ import EditarPropietario from "./pages/propietarios/EditarPropietario";
 import PropietariosPage from "./pages/propietarios/Propietario";
 import Incidencias from "./pages/incidencias/Incidencias";
 import NuevaIncidencia from "./pages/incidencias/NuevaIncidencia";
+import DetalleIncidencia from "./pages/incidencias/DetalleIncidencia";
 
 function App() {
     return (
@@ -73,6 +74,7 @@ function AppContent() {
 
                         <Route path="/incidencias" element={<Incidencias />} />
                         <Route path="/incidencias/nueva" element={<NuevaIncidencia />} />
+                        <Route path="/incidencias/:id" element={<DetalleIncidencia />} />
 
                         <Route path="/comunidades" element={<Comunidades />} />
                         <Route path="/comunidades/nueva" element={<NuevaComunidad />} />

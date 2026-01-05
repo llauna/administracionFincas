@@ -52,5 +52,39 @@ export const incidenciaController = {
         } catch (error: any) {
             res.status(400).json({ message: 'Error al crear la incidencia', error: error.message });
         }
+    },
+
+    /**
+     * Actualiza el estado o detalles de una incidencia
+     */
+    async update(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const actualizada = await Incidencia.findByIdAndUpdate(id, req.body, { new: true })
+                .populate('comunidad', 'nombre');
+
+            if (!actualizada) return res.status(404).json({ message: 'Incidencia no encontrada' });
+
+            res.json(actualizada);
+        } catch (error: any) {
+            res.status(400).json({ message: 'Error al actualizar incidencia', error: error.message });
+        }
+    },
+
+    /**
+     * Obtiene una incidencia por ID
+     */
+    async getById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const incidencia = await Incidencia.findById(id)
+                .populate('comunidad', 'nombre')
+                .populate('reportadoPorUsuarioId', 'nombreCompleto email');
+
+            if (!incidencia) return res.status(404).json({ message: 'Incidencia no encontrada' });
+            res.json(incidencia);
+        } catch (error: any) {
+            res.status(500).json({ message: 'Error al obtener detalle', error: error.message });
+        }
     }
 };

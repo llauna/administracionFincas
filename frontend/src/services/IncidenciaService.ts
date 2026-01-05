@@ -17,5 +17,21 @@ export const IncidenciaService = {
             headers: { Authorization: `Bearer ${token}` }
         });
         return response.data;
+    },
+
+    async getById(id: string) {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/incidencias/${id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return response.data;
+    },
+
+    async update(id: string, data: any) {
+        const token = localStorage.getItem('token');
+        const response = await axios.put(`${API_URL}/incidencias/${id}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return response.data;
     }
 };

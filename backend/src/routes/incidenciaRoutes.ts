@@ -9,5 +9,7 @@ router.use(authenticate);
 
 router.get('/', incidenciaController.getAll);
 router.post('/', incidenciaController.create);
+router.get('/:id', incidenciaController.getById);
+router.put('/:id', incidenciaController.update);
 
 export default router;
