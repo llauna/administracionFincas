@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import {Container, Card, Button, Alert, Form} from 'react-bootstrap';
+import { Container, Card, Button, Alert, Form } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { UserService } from '../../services/UserService';
 import { toast } from 'react-toastify';
 
 const Perfil: React.FC = () => {
-
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -41,7 +42,13 @@ const Perfil: React.FC = () => {
 
     return (
         <Container className="mt-4">
-            <h2 className="mb-4">Mi Perfil</h2>
+            {/* ESTE BLOQUE ES EL QUE FALTA O ESTÁ MAL COLOCADO */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h2 className="mb-0">Mi Perfil</h2>
+                <Button variant="secondary" onClick={() => navigate(-1)}>
+                    Volver
+                </Button>
+            </div>
             <div className="row">
                 <div className="col-md-6">
                     <Card className="shadow-sm mb-4">

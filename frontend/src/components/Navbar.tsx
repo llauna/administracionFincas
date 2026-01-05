@@ -117,7 +117,7 @@ const Navbar: React.FC = () => {
                                     </Link>
                                     <ul className="dropdown-menu" aria-labelledby="gestionClienteDropdown">
                                         <li><Link className="dropdown-item" to="/propiedades">Mis Propiedades</Link></li>
-                                        <li><Link className="dropdown-item" to={`/incidencias/${user?._id || '#'}`}>Mis Incidencias</Link></li>
+                                        <li><Link className="dropdown-item" to="/incidencias">Mis Incidencias</Link></li>
                                     </ul>
                                 </li>
 

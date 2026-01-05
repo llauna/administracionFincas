@@ -1,38 +1,90 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 import {v4 as uuidv4} from 'uuid';
-const { Schema } = mongoose;
 
-const IncidenciaSchema = new Schema({
+// Interfaz para TypeScript
+export interface IIncidencia extends Document {
+    idIncidencia: string;
+    titulo: string;
+    descripcionDetallada: string;
+    gravedadImpacto: 'Baja' | 'Media' | 'Alta' | 'Crítica';
+    estado: 'Pendiente' | 'En Proceso' | 'Resuelta' | 'Cerrada';
+    comunidad: mongoose.Types.ObjectId;
+    propietario?: mongoose.Types.ObjectId;
+    proveedorId?: mongoose.Types.ObjectId;
+    reportadoPor: {
+        nombre: string;
+        contacto: string;
+    };
+    reportadoPorUsuarioId: mongoose.Types.ObjectId;
+    ubicacionEspecifica: string;
+    fechaHoraReporte: Date;
+}
+
+const IncidenciaSchema: Schema = new Schema({
     idIncidencia: {
         type: String,
         default: () => uuidv4(),
         unique: true,
         trim: true
     },
-    titulo: { type: String, trim: true }, // Campo del primer esquema
-    descripcionDetallada: { type: String, required: true, trim: true },
+    titulo: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    descripcionDetallada: {
+        type: String,
+        required: true,
+        trim: true
+    },
     gravedadImpacto: {
         type: String,
-        enum: ['Baja', 'Media', 'Alta', 'Crítica'], // Enum del segundo esquema
+        enum: ['Baja', 'Media', 'Alta', 'Crítica'],
+        default: 'Media',
         required: true
     },
-    estado: { type: String, default: 'Pendiente' }, // Campo del primer esquema
-    comunidad: { type: Schema.Types.ObjectId, ref: 'Comunidad' }, // Campo del primer esquema
-    propietario: { type: Schema.Types.ObjectId, ref: 'Propietario' }, // Campo del primer esquema
-    proveedorId: { type: Schema.Types.ObjectId, ref: 'Proveedor' }, // Campo del segundo esquema
+    estado: {
+        type: String,
+        enum: ['Pendiente', 'En Proceso', 'Resuelta', 'Cerrada'],
+        default: 'Pendiente'
+    },
+    comunidad: {
+        type: Schema.Types.ObjectId,
+        ref: 'Comunidad',
+        required: true
+    },
+    propietario: {
+        type: Schema.Types.ObjectId,
+        ref: 'Propietario'
+    },
+    proveedorId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Proveedor'
+    },
     reportadoPor: {
         nombre: { type: String, required: true, trim: true },
         contacto: { type: String, required: true, trim: true }
     },
     reportadoPorUsuarioId: {
         type: Schema.Types.ObjectId,
-        ref: 'Usuario',
+        ref: 'User', // Cambiado a 'User' para que coincida con tu modelo de usuarios
         required: true
     },
-    ubicacionEspecifica: { type: String, required: true, trim: true }, // Campo del segundo esquema
-    fechaHoraReporte: { type: Date, required: true, default: Date.now }
+    ubicacionEspecifica: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    fechaHoraReporte: {
+        type: Date,
+        required: true,
+        default: Date.now
+    }
 }, {
-    timestamps: true
+    timestamps: true // Esto crea automáticamente createdAt y updatedAt
 });
 
-module.exports = mongoose.model('Incidencia', IncidenciaSchema);
+// Índice para búsquedas rápidas por comunidad
+IncidenciaSchema.index({ comunidad: 1, estado: 1 });
+
+export default mongoose.model<IIncidencia>('Incidencia', IncidenciaSchema);

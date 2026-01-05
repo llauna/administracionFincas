@@ -25,6 +25,8 @@ import NuevaComunidad from "./pages/comunidades/NuevaComunidad";
 import NuevoPropietario from "./pages/propietarios/NuevoPropietario";
 import EditarPropietario from "./pages/propietarios/EditarPropietario";
 import PropietariosPage from "./pages/propietarios/Propietario";
+import Incidencias from "./pages/incidencias/Incidencias";
+import NuevaIncidencia from "./pages/incidencias/NuevaIncidencia";
 
 function App() {
     return (
@@ -68,15 +70,22 @@ function AppContent() {
                         <Route path="/perfil" element={<Perfil />} />
                         <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
                         <Route path="/usuarios/listado" element={<ListadoUsuarios />} />
+
+                        <Route path="/incidencias" element={<Incidencias />} />
+                        <Route path="/incidencias/nueva" element={<NuevaIncidencia />} />
+
                         <Route path="/comunidades" element={<Comunidades />} />
                         <Route path="/comunidades/nueva" element={<NuevaComunidad />} />
                         <Route path="/comunidades/editar/:id" element={<EditarComunidad />} />
+
                         <Route path="/propiedades" element={<Propiedades />} />
                         <Route path="/propiedades/nueva" element={<NuevaPropiedad />} />
                         <Route path="/propiedades/editar/:id" element={<EditarPropiedad />} />
+
                         <Route path="/propietarios/nuevo" element={<NuevoPropietario />} />
                         <Route path="/propietarios" element={<PropietariosPage />} />
                         <Route path="/propietarios/editar/:id" element={<EditarPropietario />} />
+
                         <Route path="/personal" element={<Personal />} />
                         <Route path="/personal/nuevo" element={<NuevoUsuario />} />
                         <Route path="/personal/editar/:id" element={<EditarUsuario />} />

@@ -164,7 +164,7 @@ const Dashboard: React.FC = () => {
                                                 <div className="card-body">
                                                     <h5 className="card-title">Mis Incidencias</h5>
                                                     <p className="card-text">Revisa el estado de tus incidencias.</p>
-                                                    <Link to={`/incidencias/${user._id}`} className="btn btn-primary">
+                                                    <Link to="/incidencias" className="btn btn-primary">
                                                         Ver Mis Incidencias
                                                     </Link>
                                                 </div>
