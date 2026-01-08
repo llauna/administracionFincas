@@ -33,7 +33,7 @@ const proveedorSchema = new mongoose.Schema({
     nif: {
         type: String,
         unique: true,
-        sparse: true,  // Allows multiple documents with null/undefined nif
+        sparse: true,
         trim: true
     },
     nombre: { type: String, required: true },
@@ -48,4 +48,4 @@ const proveedorSchema = new mongoose.Schema({
     trabajos: [trabajoSchema]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Proveedor', proveedorSchema);
+export default mongoose.models.Proveedor || mongoose.model('Proveedor', proveedorSchema);

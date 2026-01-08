@@ -25,6 +25,7 @@ import NuevaComunidad from "./pages/comunidades/NuevaComunidad";
 import NuevoPropietario from "./pages/propietarios/NuevoPropietario";
 import EditarPropietario from "./pages/propietarios/EditarPropietario";
 import PropietariosPage from "./pages/propietarios/Propietario";
+import GestionProveedores from "./pages/proveedores/GestionProveedores";
 import Incidencias from "./pages/incidencias/Incidencias";
 import NuevaIncidencia from "./pages/incidencias/NuevaIncidencia";
 import DetalleIncidencia from "./pages/incidencias/DetalleIncidencia";
@@ -68,6 +69,7 @@ function AppContent() {
                     <Route element={<PrivateRoute />}>
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/empresa" element={<Empresa />} />
+                        <Route path="/proveedores" element={<GestionProveedores />} />
                         <Route path="/perfil" element={<Perfil />} />
                         <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
                         <Route path="/usuarios/listado" element={<ListadoUsuarios />} />
