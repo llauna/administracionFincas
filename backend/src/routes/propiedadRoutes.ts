@@ -55,4 +55,15 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// Obtener propiedades por comunidad (Añadir esta ruta antes de la de:id)
+router.get('/comunidad/:comunidadId', async (req, res) => {
+    try {
+        const propiedades = await Propiedad.find({ comunidad: req.params.comunidadId })
+            .populate('propietario', 'nombre name');
+        res.json(propiedades);
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener las propiedades de la comunidad' });
+    }
+});
+
 export default router;

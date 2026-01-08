@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
-import { Table, Button, Container, Spinner, Alert } from 'react-bootstrap';
+import { Table, Button, Container, Spinner, Alert, Pagination } from 'react-bootstrap';
 import { PropiedadService } from '../../services/PropiedadService';
 import { LinkContainer } from "react-router-bootstrap";
 
@@ -12,20 +12,27 @@ const Propiedades: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    // Estados para la paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const propertiesPerPage = 10;
+
     const fetchPropiedades = async () => {
         try {
             setLoading(true);
             const data = await PropiedadService.getAll();
+
             if (hasRole(['cliente', 'viewer', 'propietario'])) {
                 // Filtramos las propiedades que pertenecen al usuario logueado
-                // Asumo que el campo en tu base de datos es 'propietarioEmail' o similar
                 const filtradas = data.filter((p: any) =>
                     p.propietarioEmail === user?.email || p.propietario === user?._id
                 );
                 setPropiedades(filtradas);
             } else {
-                // Admin y empleados ven todo
-                setPropiedades(data);
+                // Admin y empleados: Filtramos para ver solo las propiedades que ya tienen un propietario vinculado
+                const vinculadas = data.filter((p: any) =>
+                    p.propietario && p.propietario !== '000000000000000000000000'
+                );
+                setPropiedades(vinculadas);
             }
         } catch (err) {
             setError('Error al cargar las propiedades');
@@ -43,12 +50,20 @@ const Propiedades: React.FC = () => {
         if (window.confirm('¿Estás seguro de que deseas eliminar esta propiedad?')) {
             try {
                 await PropiedadService.delete(id);
-                await fetchPropiedades(); // Ahora sí existe
+                await fetchPropiedades();
             } catch (err) {
                 setError('Error al eliminar la propiedad');
             }
         }
     };
+
+    // --- LÓGICA DE PAGINACIÓN ---
+    const indexOfLastProperty = currentPage * propertiesPerPage;
+    const indexOfFirstProperty = indexOfLastProperty - propertiesPerPage;
+    const currentProperties = propiedades.slice(indexOfFirstProperty, indexOfLastProperty);
+    const totalPages = Math.ceil(propiedades.length / propertiesPerPage);
+
+    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
     if (loading) return (
         <Container className="text-center mt-5">
@@ -58,13 +73,11 @@ const Propiedades: React.FC = () => {
 
     const isPrivileged = !hasRole(['cliente', 'viewer', 'propietario']);
 
-
     return (
         <Container className="mt-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2>{isPrivileged ? "Gestión de Propiedades" : "Mis Propiedades"}</h2>
                 <div>
-                    {/* Solo el Admin/Empleado puede crear propiedades */}
                     {isPrivileged && (
                         <LinkContainer to="/propiedades/nueva">
                             <Button variant="primary" className="me-2">Nueva Propiedad</Button>
@@ -85,8 +98,8 @@ const Propiedades: React.FC = () => {
                 </tr>
                 </thead>
                 <tbody>
-                {propiedades.length > 0 ? (
-                    propiedades.map((p) => (
+                {currentProperties.length > 0 ? (
+                    currentProperties.map((p) => (
                         <tr key={p._id}>
                             <td>{p.direccion}</td>
                             <td>{p.tipo}</td>
@@ -115,6 +128,26 @@ const Propiedades: React.FC = () => {
                 )}
                 </tbody>
             </Table>
+
+            {totalPages > 1 && (
+                <div className="d-flex justify-content-center mt-3">
+                    <Pagination>
+                        <Pagination.First onClick={() => paginate(1)} disabled={currentPage === 1} />
+                        <Pagination.Prev onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} />
+                        {[...Array(totalPages)].map((_, index) => (
+                            <Pagination.Item
+                                key={index + 1}
+                                active={index + 1 === currentPage}
+                                onClick={() => paginate(index + 1)}
+                            >
+                                {index + 1}
+                            </Pagination.Item>
+                        ))}
+                        <Pagination.Next onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />
+                        <Pagination.Last onClick={() => paginate(totalPages)} disabled={currentPage === totalPages} />
+                    </Pagination>
+                </div>
+            )}
         </Container>
     );
 };

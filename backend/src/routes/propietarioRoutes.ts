@@ -1,4 +1,3 @@
-// Ruta: C:\Users\0019592\WorkSpace\WS_ReactJS\administracionFincas\backend\src\routes\propietarioRoutes.ts
 import { Router } from 'express';
 import {
     getPropietarios,

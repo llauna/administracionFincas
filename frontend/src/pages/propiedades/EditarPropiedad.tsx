@@ -8,37 +8,75 @@ const EditarPropiedad: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [formData, setFormData] = useState<any>(null);
 
+    // Un solo estado formData con todos los campos necesarios
+    const [formData, setFormData] = useState({
+        tipo: 'piso',
+        direccion: '',
+        referencia: '',
+        piso: '',
+        puerta: '',
+        portal: '',
+        metrosCuadrados: 0,
+        estado: 'disponible'
+    });
+
+    // Un solo efecto para cargar los datos
     useEffect(() => {
-        const loadPropiedad = async () => {
+        const fetchPropiedad = async () => {
+            if (!id) return;
             try {
-                if (id) {
-                    const data = await PropiedadService.getById(id);
-                    setFormData(data);
+                const data = await PropiedadService.getById(id);
+                if (data) {
+                    setFormData({
+                        tipo: data.tipo || 'piso',
+                        direccion: data.direccion || '',
+                        referencia: data.referencia || '',
+                        piso: data.piso || '',
+                        puerta: data.puerta || '',
+                        portal: (data as any).portal || '',
+                        metrosCuadrados: data.metrosCuadrados || 0,
+                        estado: data.estado || 'disponible'
+                    });
                 }
             } catch (err) {
-                setError('No se pudo cargar la propiedad');
+                console.error(err);
+                setError('Error al cargar la propiedad');
             } finally {
                 setLoading(false);
             }
         };
-        void loadPropiedad();
+        fetchPropiedad();
     }, [id]);
+
+    // Función handleChange que faltaba
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: name === 'metrosCuadrados' ? Number(value) : value
+        }));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             if (id) {
-                await PropiedadService.update(id, formData);
+                await PropiedadService.update(id, formData as any);
                 navigate('/propiedades');
             }
         } catch (err) {
             setError('Error al actualizar la propiedad');
+            console.error(err);
         }
     };
 
-    if (loading) return <Spinner animation="border" className="d-block mx-auto mt-5" />;
+    if (loading) return (
+        <Container className="text-center mt-5">
+            <Spinner animation="border" variant="primary" />
+            <p>Cargando datos de la propiedad...</p>
+        </Container>
+    );
 
     return (
         <Container className="mt-4">
@@ -46,34 +84,81 @@ const EditarPropiedad: React.FC = () => {
                 <Card.Header as="h5">Editar Propiedad</Card.Header>
                 <Card.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
+
                     <Form onSubmit={handleSubmit}>
-                        <Row className="mb-3">
-                            <Form.Group as={Col} md="4">
-                                <Form.Label>Tipo</Form.Label>
-                                <Form.Select
-                                    value={formData?.tipo || 'piso'}
-                                    onChange={e => setFormData({...formData, tipo: e.target.value})}
-                                >
-                                    <option value="piso">Piso</option>
-                                    <option value="local">Local</option>
-                                    <option value="garaje">Garaje</option>
-                                    <option value="trastero">Trastero</option>
-                                </Form.Select>
-                            </Form.Group>
-                            <Form.Group as={Col} md="8">
-                                <Form.Label>Dirección</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    value={formData?.direccion || ''}
-                                    onChange={e => setFormData({...formData, direccion: e.target.value})}
-                                    required
-                                />
-                            </Form.Group>
+                        <Row>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Tipo</Form.Label>
+                                    <Form.Select name="tipo" value={formData.tipo} onChange={handleChange}>
+                                        <option value="piso">Piso</option>
+                                        <option value="local">Local</option>
+                                        <option value="garaje">Garaje</option>
+                                        <option value="trastero">Trastero</option>
+                                        <option value="casa">Casa</option>
+                                        <option value="otro">Otro</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Referencia Catastral</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="referencia"
+                                        value={formData.referencia}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
                         </Row>
 
-                        <div className="d-flex justify-content-end gap-2">
-                            <Button variant="secondary" onClick={() => navigate('/propiedades')}>Volver</Button>
-                            <Button variant="primary" type="submit">Actualizar</Button>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Dirección</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="direccion"
+                                value={formData.direccion}
+                                onChange={handleChange}
+                                required
+                            />
+                        </Form.Group>
+
+                        <Row>
+                            <Col md={3}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Portal</Form.Label>
+                                    <Form.Control type="text" name="portal" value={formData.portal} onChange={handleChange} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={3}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Piso</Form.Label>
+                                    <Form.Control type="text" name="piso" value={formData.piso} onChange={handleChange} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={3}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Puerta</Form.Label>
+                                    <Form.Control type="text" name="puerta" value={formData.puerta} onChange={handleChange} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={3}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Estado</Form.Label>
+                                    <Form.Select name="estado" value={formData.estado} onChange={handleChange}>
+                                        <option value="disponible">Disponible</option>
+                                        <option value="alquilado">Ocupado / Alquilado</option>
+                                        <option value="en_mantenimiento">Mantenimiento</option>
+                                        <option value="baja">Baja</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        <div className="d-flex justify-content-end gap-2 mt-4">
+                            <Button variant="secondary" onClick={() => navigate(-1)}>Volver</Button>
+                            <Button variant="primary" type="submit">Actualizar Propiedad</Button>
                         </div>
                     </Form>
                 </Card.Body>

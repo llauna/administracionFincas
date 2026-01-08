@@ -41,6 +41,8 @@ const NuevoPropietario = () => {
 
     const [empresas, setEmpresas] = useState<any[]>([]);
     const [comunidades, setComunidades] = useState<any[]>([]);
+    const [propiedadesDisponibles, setPropiedadesDisponibles] = useState<any[]>([]);
+    const [propiedadSeleccionadaId, setPropiedadSeleccionadaId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [showModalComunidad, setShowModalComunidad] = useState(false);
@@ -66,6 +68,21 @@ const NuevoPropietario = () => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        const fetchPropiedades = async () => {
+            if (formData.comunidades.length > 0) {
+                try {
+                    const data = await PropiedadService.getByComunidad(formData.comunidades[0]);
+                    // Filtramos solo las que no tienen propietario aún (opcional)
+                    setPropiedadesDisponibles(data);
+                } catch (error) {
+                    console.error("Error al cargar propiedades de la comunidad:", error);
+                }
+            }
+        };
+        fetchPropiedades();
+    }, [formData.comunidades]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -73,7 +90,25 @@ const NuevoPropietario = () => {
 
     const handlePropiedadChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setPropiedadData(prev => ({ ...prev, [name]: value }));
+
+        if (name === "idSeleccionado") {
+            const prop = propiedadesDisponibles.find(p => p._id === value);
+            if (prop) {
+                setPropiedadSeleccionadaId(value);
+                setPropiedadData(prev => ({
+                    ...prev,
+                    referencia: prop.referencia || "",
+                    direccion: prop.direccion || "",
+                    piso: prop.piso || "",
+                    portal: prop.portal || "",
+                    puerta: prop.puerta || "",
+                    tipo: prop.tipo || "piso",
+                    metrosCuadrados: prop.metrosCuadrados || 0
+                }));
+            }
+        } else {
+            setPropiedadData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleComunidadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -83,7 +118,6 @@ const NuevoPropietario = () => {
             .map(option => option.value);
         setFormData(prev => ({ ...prev, comunidades: selectedValues }));
     };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const form = e.currentTarget as HTMLFormElement;
@@ -103,19 +137,18 @@ const NuevoPropietario = () => {
                     : [formData.comunidades].filter(Boolean)
             });
 
-            // 2. Si hay datos de propiedad y se seleccionó al menos una comunidad
-            if (formData.comunidades.length > 0) {
-                const propiedadCompleta = {
+            // 2. Si se seleccionó una propiedad existente, la vinculamos
+            if (propiedadSeleccionadaId) {
+                await PropiedadService.update(propiedadSeleccionadaId, {
                     ...propiedadData,
-                    comunidad: formData.comunidades[0],  // Changed from comunidadId to comunidad
-                    propietario: propietarioCreado._id, // Changed from propietarioId to propietario
-                    estado: propiedadData.estado || 'disponible' // Ensure estado has a value
-                };
-
-                await PropiedadService.create(propiedadCompleta);
+                    comunidad: formData.comunidades[0],
+                    propietario: propietarioCreado._id,
+                    estado: 'alquilado' // O el estado que prefieras al asignar dueño
+                } as any);
             }
 
             navigate('/propietarios');
+
         } catch (error) {
             console.error("Error al crear propietario:", error);
             setError("Error al crear el propietario: " + (error as Error).message);
@@ -256,24 +289,43 @@ const NuevoPropietario = () => {
                         <div className="card mt-3">
                             <div className="card-body">
                                 <h5 className="card-title">Datos de la Propiedad</h5>
+
+                                <Form.Group className="mb-4">
+                                    <Form.Label className="fw-bold">Seleccionar Propiedad Existente</Form.Label>
+                                    <Form.Select
+                                        name="idSeleccionado"
+                                        value={propiedadSeleccionadaId}
+                                        onChange={handlePropiedadChange}
+                                    >
+                                        <option value="">-- Seleccione un Piso/Local de la lista --</option>
+                                        {propiedadesDisponibles.map(p => (
+                                            <option key={p._id} value={p._id}>
+                                                {p.tipo.toUpperCase()}: Piso {p.piso} - Puerta {p.puerta} ({p.referencia})
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                    <Form.Text className="text-muted">
+                                        Elija la propiedad que ha sido generada automáticamente para esta comunidad.
+                                    </Form.Text>
+                                </Form.Group>
+
+                                <hr />
+
                                 <div className="row">
                                     <div className="col-md-6 mb-3">
                                         <Form.Group controlId="formTipo">
                                             <Form.Label>Tipo de Propiedad</Form.Label>
-                                            <Form.Select
-                                                name="tipo" value={propiedadData.tipo} onChange={handlePropiedadChange} >
-                                                <option value="piso">Piso</option>
-                                                <option value="casa">Casa</option>
-                                                <option value="local">Local</option>
-                                                <option value="trastero">Trastero</option>
-                                                <option value="garaje">Garaje</option>
-                                                <option value="otro">Otro</option>
-                                            </Form.Select>
+                                            <Form.Control
+                                                type="text"
+                                                name="tipo"
+                                                value={propiedadData.tipo}
+                                                readOnly
+                                                disabled
+                                            />
                                         </Form.Group>
                                     </div>
                                     <div className="col-md-6 mb-3">
                                         <Form.Group controlId="formReferencia">
-                                            <Form.Label>Referencia Catastral</Form.Label>
                                             <Form.Control
                                                 type="text"
                                                 name="referencia"

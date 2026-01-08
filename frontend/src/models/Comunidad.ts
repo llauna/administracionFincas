@@ -7,4 +7,10 @@ export interface Comunidad {
     pais?: string;
     createdAt?: string;
     updatedAt?: string;
+    numPisos: number;
+    pisosPorBloque: number;
+    localesPorPlanta: number;
+    plazasParking: number;
+    tieneLocales: boolean;
+    tieneParking: boolean;
 }

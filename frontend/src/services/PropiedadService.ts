@@ -73,5 +73,22 @@ export const PropiedadService = {
         if (!response.ok) {
             throw new Error('Error al eliminar la propiedad');
         }
+    },
+
+    async getByComunidad(comunidadId: string): Promise<Propiedad[]> {
+        try {
+            const response = await fetch(`${API_URL}/propiedades/comunidad/${comunidadId}`, {
+                headers: getAuthHeader()
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al obtener las propiedades de la comunidad');
+            }
+
+            return response.json();
+        } catch (error) {
+            console.error('Error en PropiedadService.getByComunidad:', error);
+            throw error;
+        }
     }
 };
