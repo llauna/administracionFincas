@@ -9,7 +9,7 @@ export interface PropietarioRef {
 }
 
 export interface Propiedad {
-    id: string;
+    _id: string;
     referencia: string;
     direccion: string;
     piso?: string;
@@ -22,7 +22,7 @@ export interface Propiedad {
     numHabitaciones?: number;
     numBanos?: number;
     tipo: 'piso' | 'casa' | 'local' | 'trastero' | 'garaje' | 'otro';
-    estado: 'disponible' | 'alquilado' | 'en_mantenimiento' | 'baja';
+    estado: 'disponible' | 'alquilado' | 'ocupado' | 'en_mantenimiento' | 'baja';
     comunidad: string | ComunidadRef;
     propietario: string | PropietarioRef;
     observaciones?: string;
@@ -45,7 +45,7 @@ export interface PropiedadDTO {
     numHabitaciones?: number;
     numBanos?: number;
     tipo: 'piso' | 'casa' | 'local' | 'trastero' | 'garaje' | 'otro';
-    estado: 'disponible' | 'alquilado' | 'en_mantenimiento' | 'baja';
+    estado: 'disponible' | 'alquilado' | 'ocupado' | 'en_mantenimiento' | 'baja';
     comunidad: string;
     propietario: string;
     observaciones?: string;

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container, Button, Spinner, Alert,
     Tabs, Tab, Table, Badge,
-    InputGroup, Form, Row, Col, Pagination
+    Form, Row, Col, Pagination
 } from 'react-bootstrap';
 import { ComunidadService } from '../../services/ComunidadService';
 import { PropiedadService } from '../../services/PropiedadService';
@@ -17,11 +17,9 @@ const EditarComunidad: React.FC = () => {
     const [activeTab, setActiveTab] = useState('detalles');
     const [searchTerm, setSearchTerm] = useState('');
     const [properties, setProperties] = useState<Propiedad[]>([]);
-    const [loadingProperties, setLoadingProperties] = useState(false);
 
-    // Estados para la paginación
     const [currentPage, setCurrentPage] = useState(1);
-    const propertiesPerPage = 10;
+    const propertiesPerPage = 8;
 
     const [formData, setFormData] = useState({
         nombre: '',
@@ -42,7 +40,6 @@ const EditarComunidad: React.FC = () => {
             if (!id) return;
             setLoading(true);
             try {
-                // Cargamos comunidad y propiedades en paralelo para mayor velocidad
                 const [comunidadData, propiedades] = await Promise.all([
                     ComunidadService.getById(id),
                     PropiedadService.getByComunidad(id)
@@ -63,7 +60,6 @@ const EditarComunidad: React.FC = () => {
                         plazasParking: comunidadData.plazasParking || 0
                     });
                 }
-                // Guardamos todas las propiedades (pisos, locales y parkings)
                 setProperties(propiedades || []);
             } catch (err) {
                 console.error('Error al cargar datos:', err);
@@ -72,7 +68,6 @@ const EditarComunidad: React.FC = () => {
                 setLoading(false);
             }
         };
-
         fetchData();
     }, [id]);
 
@@ -83,40 +78,17 @@ const EditarComunidad: React.FC = () => {
             navigate('/comunidades');
         } catch (err) {
             setError('Error al actualizar la comunidad');
-            console.error(err);
         }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
-
         setFormData(prev => ({
             ...prev,
-            [name]: type === 'number' ? Number(value) :
-                type === 'checkbox' ? checked :
-                    value
+            [name]: type === 'number' ? Number(value) : type === 'checkbox' ? checked : value
         }));
     };
-
-    const fetchProperties = async () => {
-        if (!id) return;
-        setLoadingProperties(true);
-        try {
-            // Asegúrate de que tu backend tenga definida la ruta GET /api/propiedades/comunidad/:id
-            const propiedades = await PropiedadService.getByComunidad(id);
-            setProperties(propiedades);
-        } catch (error) {
-            console.error('Error fetching properties:', error);
-            setError('No se pudieron cargar las propiedades. Verifique la ruta del servidor.');
-        } finally {
-            setLoadingProperties(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchProperties();
-    }, [id]);
 
     const filteredProperties = (properties || []).filter(propiedad => {
         const search = searchTerm.toLowerCase();
@@ -135,204 +107,137 @@ const EditarComunidad: React.FC = () => {
 
     const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-    // Renderizado condicional de carga
-    if (loading) {
-        return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
-                <div className="text-center">
-                    <Spinner animation="border" variant="primary" />
-                    <p className="mt-2">Cargando comunidad...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return (
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+            <Spinner animation="border" variant="primary" />
+        </div>
+    );
 
     if (error) return <Container className="mt-4"><Alert variant="danger">{error}</Alert></Container>;
 
     return (
-        <Container className="mt-4">
-            <h2>Editar Comunidad: {formData.nombre}</h2>
+        <Container fluid className="px-4 mt-1">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+                <h4 className="mb-0 text-primary">Editar Comunidad: {formData.nombre}</h4>
+                <Button variant="outline-secondary" size="sm" onClick={() => navigate('/comunidades')} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>
+                    <i className="bi bi-arrow-left"></i> Volver
+                </Button>
+            </div>
 
-            <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'detalles')} className="mb-3">
+            <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'detalles')} className="mb-1 small">
                 <Tab eventKey="detalles" title="Detalles">
-                    <div className="mt-3">
-                        <Form onSubmit={handleSubmit} key={formData.nombre}>
-                            <Row>
+                    <div className="mt-2 px-2 border rounded p-3 bg-white">
+                        <Form onSubmit={handleSubmit}>
+                            <Row className="g-2">
                                 <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Nombre</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="nombre"
-                                            value={formData.nombre}
-                                            onChange={handleChange}
-                                            required
-                                        />
+                                    <Form.Group className="mb-2">
+                                        <Form.Label className="small mb-1">Nombre</Form.Label>
+                                        <Form.Control size="sm" type="text" name="nombre" value={formData.nombre} onChange={handleChange} required />
                                     </Form.Group>
                                 </Col>
                                 <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Dirección</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="direccion"
-                                            value={formData.direccion}
-                                            onChange={handleChange}
-                                            required
-                                        />
+                                    <Form.Group className="mb-2">
+                                        <Form.Label className="small mb-1">Dirección</Form.Label>
+                                        <Form.Control size="sm" type="text" name="direccion" value={formData.direccion} onChange={handleChange} required />
                                     </Form.Group>
                                 </Col>
                             </Row>
-
-                            <Row>
+                            <Row className="g-2">
                                 <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Código Postal</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="codigoPostal"
-                                            value={formData.codigoPostal}
-                                            onChange={handleChange}
-                                        />
+                                    <Form.Group className="mb-2">
+                                        <Form.Label className="small mb-1">C.P.</Form.Label>
+                                        <Form.Control size="sm" type="text" name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} />
                                     </Form.Group>
                                 </Col>
                                 <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Ciudad</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="ciudad"
-                                            value={formData.ciudad}
-                                            onChange={handleChange}
-                                        />
+                                    <Form.Group className="mb-2">
+                                        <Form.Label className="small mb-1">Ciudad</Form.Label>
+                                        <Form.Control size="sm" type="text" name="ciudad" value={formData.ciudad} onChange={handleChange} />
                                     </Form.Group>
                                 </Col>
                                 <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>País</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="pais"
-                                            value={formData.pais}
-                                            onChange={handleChange}
-                                        />
+                                    <Form.Group className="mb-2">
+                                        <Form.Label className="small mb-1">País</Form.Label>
+                                        <Form.Control size="sm" type="text" name="pais" value={formData.pais} onChange={handleChange} />
                                     </Form.Group>
                                 </Col>
                             </Row>
-
-                            <div className="d-flex justify-content-between mt-4">
-                                <Button variant="primary" type="submit">
-                                    Guardar Cambios
-                                </Button>
-                                <Button variant="secondary" onClick={() => navigate('/comunidades')}>
-                                    Volver
-                                </Button>
-                            </div>
+                            <Button variant="primary" type="submit" size="sm" className="mt-2">
+                                <i className="bi bi-save me-1"></i> Guardar Cambios
+                            </Button>
                         </Form>
                     </div>
                 </Tab>
 
-                <Tab eventKey="propiedades" title="Propiedades">
-                    <div className="mt-3">
-                        <div className="d-flex justify-content-between mb-3">
-                            <h4>Propiedades de la Comunidad</h4>
-                            <div style={{ width: '300px' }}>
-                                <InputGroup>
-                                    <Form.Control
-                                        placeholder="Buscar propiedades..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                    <Button variant="outline-secondary">
-                                        <i className="bi bi-search"></i>
-                                    </Button>
-                                </InputGroup>
+                <Tab eventKey="propiedades" title={`Propiedades (${filteredProperties.length})`}>
+                    <div className="card shadow-sm p-2 bg-white">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                            <h6 className="m-0 text-muted small">Listado de Propiedades</h6>
+                            <div style={{ width: '180px' }}>
+                                <Form.Control
+                                    size="sm" placeholder="Buscar..."
+                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                                    style={{ fontSize: '0.8rem' }}
+                                />
                             </div>
                         </div>
 
-                        {loadingProperties ? (
-                            <div className="text-center my-4">
-                                <Spinner animation="border" />
-                                <p>Cargando propiedades...</p>
-                            </div>
-                        ) : (
-                            <>
-                                <Table striped bordered hover>
-                                    <thead>
-                                    <tr>
-                                        <th>Referencia</th>
-                                        <th>Tipo</th>
-                                        <th>Piso</th>
-                                        <th>Puerta</th>
-                                        <th>Estado</th>
-                                        <th>Propietario</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {currentProperties.length > 0 ? (
-                                        currentProperties.map((propiedad) => (
-                                            <tr key={propiedad.id}>
-                                                <td>{propiedad.referencia}</td>
-                                                <td>
-                                                    {propiedad.tipo === 'piso' && 'Piso'}
-                                                    {propiedad.tipo === 'local' && 'Local Comercial'}
-                                                    {propiedad.tipo === 'garaje' && 'Plaza Parking'}
-                                                </td>
-                                                <td>{propiedad.piso || '-'}</td>
-                                                <td>{propiedad.puerta || '-'}</td>
-                                                <td>
-                                                    <Badge bg={propiedad.estado === 'disponible' ? 'success' : 'primary'}>
-                                                        {propiedad.estado === 'disponible' ? 'Disponible' : 'Ocupado'}
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    {propiedad.propietario && typeof propiedad.propietario === 'object'
-                                                        ? (propiedad.propietario as any).nombre || (propiedad.propietario as any).name
-                                                        : 'Sin propietario'}
-                                                </td>
-                                                <td>
-                                                    <Button
-                                                        variant="outline-primary"
-                                                        size="sm"
-                                                        onClick={() => navigate(`/propiedades/editar/${propiedad.id}`)}
-                                                    >
-                                                        <i className="bi bi-pencil"></i>
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={7} className="text-center">
-                                                No se encontraron propiedades
+                        <div className="table-responsive">
+                            <Table striped hover size="sm" className="mb-1" style={{ fontSize: '0.75rem', verticalAlign: 'middle' }}>
+                                <thead className="table-dark">
+                                <tr>
+                                    <th style={{ width: '25%' }}>Referencia</th>
+                                    <th>Tipo</th>
+                                    <th>Piso</th>
+                                    <th>Pta</th>
+                                    <th>Estado</th>
+                                    <th>Propietario</th>
+                                    <th className="text-center">Acción</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {currentProperties.length > 0 ? (
+                                    currentProperties.map((propiedad) => (
+                                        <tr key={propiedad._id || (propiedad as any).id}>
+                                            <td className="text-truncate" style={{ maxWidth: '150px' }}>{propiedad.referencia || 'Sin Ref.'}</td>
+                                            <td>{propiedad.tipo}</td>
+                                            <td>{propiedad.piso || '-'}</td>
+                                            <td>{propiedad.puerta || '-'}</td>
+                                            <td>
+                                                <Badge bg={propiedad.estado === 'disponible' ? 'success' : propiedad.estado === 'alquilado' ? 'info' : 'primary'} style={{ fontSize: '0.65rem' }}>
+                                                    {propiedad.estado}
+                                                </Badge>
+                                            </td>
+                                            <td className="text-truncate" style={{ maxWidth: '120px' }}>
+                                                {propiedad.propietario && typeof propiedad.propietario === 'object' ? (propiedad.propietario as any).nombre : 'Sin prop.'}
+                                            </td>
+                                            <td className="text-center">
+                                                <Button variant="primary" size="sm" style={{ padding: '0px 5px', fontSize: '0.7rem' }} onClick={() => navigate(`/propiedades/editar/${propiedad._id}`)}>
+                                                    Editar
+                                                </Button>
                                             </td>
                                         </tr>
-                                    )}
-                                    </tbody>
-                                </Table>
-
-                                {totalPages > 1 && (
-                                    <div className="d-flex justify-content-center mt-3">
-                                        <Pagination>
-                                            <Pagination.First onClick={() => paginate(1)} disabled={currentPage === 1} />
-                                            <Pagination.Prev onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} />
-                                            {[...Array(totalPages)].map((_, index) => (
-                                                <Pagination.Item
-                                                    key={index + 1}
-                                                    active={index + 1 === currentPage}
-                                                    onClick={() => paginate(index + 1)}
-                                                >
-                                                    {index + 1}
-                                                </Pagination.Item>
-                                            ))}
-                                            <Pagination.Next onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />
-                                            <Pagination.Last onClick={() => paginate(totalPages)} disabled={currentPage === totalPages} />
-                                        </Pagination>
-                                    </div>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={7} className="text-center py-3">No se encontraron propiedades</td></tr>
                                 )}
-                            </>
-                        )}
+                                </tbody>
+                            </Table>
+
+                            {totalPages > 1 && (
+                                <div className="d-flex justify-content-center mt-1">
+                                    <Pagination size="sm" className="mb-0">
+                                        <Pagination.Prev onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} />
+                                        {[...Array(totalPages)].map((_, index) => (
+                                            <Pagination.Item key={index + 1} active={index + 1 === currentPage} onClick={() => paginate(index + 1)}>
+                                                {index + 1}
+                                            </Pagination.Item>
+                                        ))}
+                                        <Pagination.Next onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />
+                                    </Pagination>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </Tab>
             </Tabs>

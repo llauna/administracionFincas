@@ -17,7 +17,9 @@ export const PropiedadService = {
 
     // Obtener una propiedad por ID
     async getById(id: string): Promise<Propiedad> {
-        const response = await fetch(`${API_URL}/propiedades/${id}`);
+        const response = await fetch(`${API_URL}/propiedades/${id}`, {
+            headers: getAuthHeader()
+        });
         if (!response.ok) {
             throw new Error('Propiedad no encontrada');
         }
@@ -51,9 +53,7 @@ export const PropiedadService = {
     async update(id: string, propiedad: PropiedadDTO): Promise<Propiedad> {
         const response = await fetch(`${API_URL}/propiedades/${id}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getAuthHeader(),
             body: JSON.stringify(propiedad),
         });
         if (!response.ok) {
