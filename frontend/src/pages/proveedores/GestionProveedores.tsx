@@ -28,6 +28,9 @@ const GestionProveedores: React.FC = () => {
         importeTotal: 0,
         concepto: ''
     });
+    // Nuevo estado para ver facturas
+    const [facturasProveedor, setFacturasProveedor] = useState<any[]>([]);
+    const [showListadoModal, setShowListadoModal] = useState(false);
 
     const handleLoad = async () => {
         const [dataP, dataC] = await Promise.all([
@@ -42,6 +45,59 @@ const GestionProveedores: React.FC = () => {
         setCurrentProveedor(proveedor);
         setShowFacturaModal(true);
     };
+
+    // Nueva función para ver facturas existentes
+    const handleVerFacturas = async (proveedor: Proveedor) => {
+        setCurrentProveedor(proveedor);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Sesión expirada. Por favor, vuelve a entrar.');
+                return;
+            }
+
+            const res = await fetch(`http://localhost:5000/api/movimientos/proveedor/${proveedor._id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                if (res.status === 401) throw new Error('No autorizado');
+                throw new Error('Error en el servidor');
+            }
+
+            const data = await res.json();
+            setFacturasProveedor(Array.isArray(data) ? data : []);
+            setShowListadoModal(true);
+        } catch (error) {
+            console.error(error);
+            alert('Error al cargar facturas. Intenta cerrar sesión y volver a entrar.');
+        }
+    };
+
+    const handleDeleteFactura = async (facturaGroup: any) => {
+        if (window.confirm(`¿Seguro que quieres eliminar todos los registros de "${facturaGroup._id}"?`)) {
+            try {
+                await fetch(`http://localhost:5000/api/movimientos/bulk-delete`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        descripcion: facturaGroup._id,
+                        proveedorId: currentProveedor?._id
+                    })
+                });
+                // Recargamos el modal
+                handleVerFacturas(currentProveedor!);
+            } catch (error) {
+                alert('Error al eliminar el bloque de facturas');
+            }
+        }
+    };
+
 
     const handleSubmitFactura = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -104,10 +160,16 @@ const GestionProveedores: React.FC = () => {
                         <td>{p.telefono} | {p.email}</td>
                         <td className="text-center">
                             <Button
-                                variant="outline-primary" size="sm" className="py-0 px-2 small"
+                                variant="outline-primary" size="sm" className="py-0 px-2 small me-2"
                                 onClick={() => handleOpenFactura(p)}
                             >
                                 Facturas
+                            </Button>
+                            <Button
+                                variant="outline-info" size="sm" className="py-0 px-2 small"
+                                onClick={() => handleVerFacturas(p)}
+                            >
+                                Ver Histórico
                             </Button>
                         </td>
                     </tr>
@@ -115,6 +177,46 @@ const GestionProveedores: React.FC = () => {
                 </tbody>
             </Table>
 
+            {/* MODAL PARA VER Y BORRAR FACTURAS (ESTE BLOQUE TE FALTABA) */}
+            <Modal show={showListadoModal} onHide={() => setShowListadoModal(false)} size="lg" centered>
+                <Modal.Header closeButton className="py-2">
+                    <Modal.Title className="h6">Historial de Facturas: {currentProveedor?.nombre}</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="p-0">
+                    <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.75rem' }}>
+                        <thead className="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Concepto</th>
+                            <th>Importe</th>
+                            <th className="text-center">Acción</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {facturasProveedor.length > 0 ? facturasProveedor.map((f, index) => (
+                            <tr key={index}>
+                                <td>{new Date(f.fecha).toLocaleDateString()}</td>
+                                <td>{f._id}</td>
+                                <td className="fw-bold text-danger">{f.importeTotal.toFixed(2)}€</td>
+                                <td className="text-center" style={{ width: '80px' }}>
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        className="d-flex align-items-center justify-content-center mx-auto"
+                                        style={{ width: '30px', height: '30px' }}
+                                        onClick={() => handleDeleteFactura(f)}
+                                    >
+                                        <i className="bi bi-trash"></i>
+                                    </Button>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan={4} className="text-center py-3">No hay facturas registradas</td></tr>
+                        )}
+                        </tbody>
+                    </Table>
+                </Modal.Body>
+            </Modal>
             {/* MODAL DE ALTA */}
             <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
                 <Modal.Header closeButton className="py-2"><Modal.Title className="h6">Nuevo Proveedor</Modal.Title></Modal.Header>

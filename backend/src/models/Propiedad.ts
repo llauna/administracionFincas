@@ -7,6 +7,7 @@ const PropiedadSchema = new mongoose.Schema({
     numero: { type: String },
     piso: { type: String },
     puerta: { type: String },
+    coeficiente: { type: Number, default: 0 },
     estado: {
         type: String,
         enum: ['disponible', 'alquilado', 'ocupado', 'en_mantenimiento', 'baja'],
@@ -14,7 +15,6 @@ const PropiedadSchema = new mongoose.Schema({
     },
     comunidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad', required: true },
     propietario: { type: mongoose.Schema.Types.ObjectId, ref: 'Propietario', required: true },
-    coeficiente: { type: Number, default: 0 }
 }, { timestamps: true });
 
 // LA CLAVE: Cambiar 'Propietario' por 'Propiedad'

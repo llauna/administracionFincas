@@ -14,6 +14,7 @@ export interface Propiedad {
     direccion: string;
     piso?: string;
     puerta?: string;
+    coeficiente?: number;
     codigoPostal?: string;
     ciudad?: string;
     provincia?: string;
@@ -37,6 +38,7 @@ export interface PropiedadDTO {
     piso?: string;
     portal?: string;
     puerta?: string;
+    coeficiente?: number;
     codigoPostal?: string;
     ciudad?: string;
     provincia?: string;

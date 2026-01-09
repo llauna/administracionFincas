@@ -5,6 +5,7 @@ const movimientoSchema = new mongoose.Schema({
     descripcion: { type: String, required: true },
     importe: { type: Number, required: true },
     tipo: { type: String, enum: ['Ingreso', 'Gasto'], required: true },
+    proveedor: { type: mongoose.Schema.Types.ObjectId, ref: 'Proveedor' },
     // Campos nuevos para el reparto proporcional:
     comunidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad' },
     propiedad: { type: mongoose.Schema.Types.ObjectId, ref: 'Propiedad' },

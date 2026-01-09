@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Container, Button, Spinner, Alert,
-    Tabs, Tab, Table, Badge,
-    Form, Row, Col, Pagination
+    Container, Button, Spinner, Alert, Tabs, Tab, Table, Badge, Form, Row, Col, Pagination
 } from 'react-bootstrap';
 import { ComunidadService } from '../../services/ComunidadService';
 import { PropiedadService } from '../../services/PropiedadService';
@@ -15,15 +13,23 @@ const EditarComunidad: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('detalles');
+
     const [searchTerm, setSearchTerm] = useState('');
     const [properties, setProperties] = useState<Propiedad[]>([]);
+    const [movimientos, setMovimientos] = useState<any[]>([]);
 
+    // Estados para paginación de Propiedades
     const [currentPage, setCurrentPage] = useState(1);
     const propertiesPerPage = 8;
+
+    // Estados para paginación de Movimientos (AQUÍ ESTABA EL ERROR, FALTABAN ESTOS ESTADOS)
+    const [currentMovPage, setCurrentMovPage] = useState(1);
+    const [movsPerPage, setMovsPerPage] = useState(10);
 
     const [formData, setFormData] = useState({
         nombre: '',
         direccion: '',
+        coeficiente: 0,
         codigoPostal: '',
         ciudad: '',
         pais: 'España',
@@ -35,20 +41,27 @@ const EditarComunidad: React.FC = () => {
         plazasParking: 0
     });
 
+
+
+
     useEffect(() => {
         const fetchData = async () => {
             if (!id) return;
             setLoading(true);
             try {
-                const [comunidadData, propiedades] = await Promise.all([
+                const [comunidadData, propiedades, dataMovs] = await Promise.all([
                     ComunidadService.getById(id),
-                    PropiedadService.getByComunidad(id)
+                    PropiedadService.getByComunidad(id),
+                    fetch(`http://localhost:5000/api/movimientos/comunidad/${id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    }).then(res => res.json())
                 ]);
 
                 if (comunidadData) {
                     setFormData({
                         nombre: comunidadData.nombre || '',
                         direccion: comunidadData.direccion || '',
+                        coeficiente: comunidadData.coeficiente || '',
                         codigoPostal: comunidadData.codigoPostal || '',
                         ciudad: comunidadData.ciudad || '',
                         pais: comunidadData.pais || 'España',
@@ -61,9 +74,11 @@ const EditarComunidad: React.FC = () => {
                     });
                 }
                 setProperties(propiedades || []);
+                setMovimientos(Array.isArray(dataMovs) ? dataMovs : []);
             } catch (err) {
                 console.error('Error al cargar datos:', err);
                 setError('Error al cargar los datos de la comunidad');
+                // Aseguramos que el estado de carga termine aunque haya error
             } finally {
                 setLoading(false);
             }
@@ -99,13 +114,20 @@ const EditarComunidad: React.FC = () => {
         );
     });
 
+    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+    // Lógica para paginación de PROPIEDADES
     const totalPages = Math.max(1, Math.ceil(filteredProperties.length / propertiesPerPage));
     const safePage = Math.min(currentPage, totalPages);
     const indexOfLastProperty = safePage * propertiesPerPage;
     const indexOfFirstProperty = indexOfLastProperty - propertiesPerPage;
     const currentProperties = filteredProperties.slice(indexOfFirstProperty, indexOfLastProperty);
 
-    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+    // Lógica para paginación de MOVIMIENTOS (Añadimos esto aquí para que las variables existan)
+    const totalMovPages = Math.max(1, Math.ceil(movimientos.length / movsPerPage));
+    const indexOfLastMov = currentMovPage * movsPerPage;
+    const indexOfFirstMov = indexOfLastMov - movsPerPage;
+    const currentMovimientos = movimientos.slice(indexOfFirstMov, indexOfLastMov);
 
     if (loading) return (
         <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
@@ -126,45 +148,52 @@ const EditarComunidad: React.FC = () => {
 
             <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'detalles')} className="mb-1 small">
                 <Tab eventKey="detalles" title="Detalles">
-                    <div className="mt-2 px-2 border rounded p-3 bg-white">
+                    <div className="mt-4 px-3 border rounded p-4 bg-white shadow-sm mx-auto" style={{ maxWidth: '700px' }}>
                         <Form onSubmit={handleSubmit}>
-                            <Row className="g-2">
-                                <Col md={6}>
-                                    <Form.Group className="mb-2">
-                                        <Form.Label className="small mb-1">Nombre</Form.Label>
+                            <Row className="g-3">
+                                <Col md={8}>
+                                    <Form.Group>
+                                        <Form.Label className="small mb-1 fw-bold">Nombre de la Comunidad</Form.Label>
                                         <Form.Control size="sm" type="text" name="nombre" value={formData.nombre} onChange={handleChange} required />
                                     </Form.Group>
                                 </Col>
-                                <Col md={6}>
-                                    <Form.Group className="mb-2">
-                                        <Form.Label className="small mb-1">Dirección</Form.Label>
-                                        <Form.Control size="sm" type="text" name="direccion" value={formData.direccion} onChange={handleChange} required />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row className="g-2">
                                 <Col md={4}>
-                                    <Form.Group className="mb-2">
-                                        <Form.Label className="small mb-1">C.P.</Form.Label>
-                                        <Form.Control size="sm" type="text" name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-2">
-                                        <Form.Label className="small mb-1">Ciudad</Form.Label>
-                                        <Form.Control size="sm" type="text" name="ciudad" value={formData.ciudad} onChange={handleChange} />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-2">
-                                        <Form.Label className="small mb-1">País</Form.Label>
+                                    <Form.Group>
+                                        <Form.Label className="small mb-1 fw-bold">País</Form.Label>
                                         <Form.Control size="sm" type="text" name="pais" value={formData.pais} onChange={handleChange} />
                                     </Form.Group>
                                 </Col>
                             </Row>
-                            <Button variant="primary" type="submit" size="sm" className="mt-2">
-                                <i className="bi bi-save me-1"></i> Guardar Cambios
-                            </Button>
+
+                            <Row className="g-3 mt-1">
+                                <Col md={12}>
+                                    <Form.Group>
+                                        <Form.Label className="small mb-1 fw-bold">Dirección Completa</Form.Label>
+                                        <Form.Control size="sm" type="text" name="direccion" value={formData.direccion} onChange={handleChange} required />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+
+                            <Row className="g-3 mt-1">
+                                <Col md={4}>
+                                    <Form.Group>
+                                        <Form.Label className="small mb-1 fw-bold">Código Postal</Form.Label>
+                                        <Form.Control size="sm" type="text" name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={8}>
+                                    <Form.Group>
+                                        <Form.Label className="small mb-1 fw-bold">Ciudad</Form.Label>
+                                        <Form.Control size="sm" type="text" name="ciudad" value={formData.ciudad} onChange={handleChange} />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+
+                            <div className="d-grid gap-2 mt-4">
+                                <Button variant="primary" type="submit" size="sm" className="py-2">
+                                    <i className="bi bi-save me-2"></i> Guardar Cambios
+                                </Button>
+                            </div>
                         </Form>
                     </div>
                 </Tab>
@@ -234,6 +263,85 @@ const EditarComunidad: React.FC = () => {
                                             </Pagination.Item>
                                         ))}
                                         <Pagination.Next onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />
+                                    </Pagination>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </Tab>
+
+                <Tab eventKey="movimientos" title={`Movimientos (${movimientos.length})`}>
+                    <div className="card shadow-sm p-2 bg-white">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                            <h6 className="m-0 text-muted small">Extracto de Gastos y Repartos</h6>
+                            <div className="d-flex align-items-center">
+                                <Form.Label className="small mb-0 me-2">Ver:</Form.Label>
+                                <Form.Select
+                                    size="sm"
+                                    style={{ width: '80px', fontSize: '0.75rem' }}
+                                    value={movsPerPage}
+                                    onChange={(e) => {
+                                        setMovsPerPage(Number(e.target.value));
+                                        setCurrentMovPage(1);
+                                    }}
+                                >
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </Form.Select>
+                            </div>
+                        </div>
+                        <div className="table-responsive">
+                            <Table striped hover size="sm" style={{ fontSize: '0.75rem' }}>
+                                <thead className="table-dark">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Concepto</th>
+                                    <th>Propiedad</th>
+                                    <th>Importe</th>
+                                    <th>Estado</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {currentMovimientos.length > 0 ? (
+                                    currentMovimientos.map((m: any) => (
+                                        <tr key={m._id}>
+                                            <td>{new Date(m.fecha).toLocaleDateString()}</td>
+                                            <td>{m.descripcion}</td>
+                                            <td>
+                                                {m.propiedad ? `${m.propiedad.piso || ''} ${m.propiedad.puerta || ''}` : 'N/A'}
+                                            </td>
+                                            <td className="fw-bold text-danger">
+                                                {(m.importe || 0).toFixed(2)}€
+                                            </td>
+                                            <td>
+                                                <Badge bg={m.estado === 'pagado' ? 'success' : 'warning'} style={{ fontSize: '0.65rem' }}>
+                                                    {m.estado}
+                                                </Badge>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={5} className="text-center py-3">No hay movimientos registrados</td></tr>
+                                )}
+                                </tbody>
+                            </Table>
+
+                            {totalMovPages > 1 && (
+                                <div className="d-flex justify-content-center mt-1">
+                                    <Pagination size="sm" className="mb-0">
+                                        <Pagination.Prev onClick={() => setCurrentMovPage(prev => Math.max(prev - 1, 1))} disabled={currentMovPage === 1} />
+                                        {[...Array(totalMovPages)].map((_, index) => (
+                                            <Pagination.Item
+                                                key={index + 1}
+                                                active={index + 1 === currentMovPage}
+                                                onClick={() => setCurrentMovPage(index + 1)}
+                                            >
+                                                {index + 1}
+                                            </Pagination.Item>
+                                        ))}
+                                        <Pagination.Next onClick={() => setCurrentMovPage(prev => Math.min(prev + 1, totalMovPages))} disabled={currentMovPage === totalMovPages} />
                                     </Pagination>
                                 </div>
                             )}

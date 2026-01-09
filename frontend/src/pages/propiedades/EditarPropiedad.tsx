@@ -16,6 +16,7 @@ const EditarPropiedad: React.FC = () => {
         piso: '',
         puerta: '',
         portal: '',
+        coeficiente: 0,
         metrosCuadrados: 0,
         estado: 'disponible'
     });
@@ -33,6 +34,7 @@ const EditarPropiedad: React.FC = () => {
                         piso: data.piso || '',
                         puerta: data.puerta || '',
                         portal: (data as any).portal || '',
+                        coeficiente: data.coeficiente || 0,
                         metrosCuadrados: data.metrosCuadrados || 0,
                         estado: data.estado || 'disponible'
                     });
@@ -51,7 +53,7 @@ const EditarPropiedad: React.FC = () => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'metrosCuadrados' ? Number(value) : value
+            [name]: (name === 'metrosCuadrados' || name === 'coeficiente') ? Number(value) : value
         }));
     };
 
@@ -101,10 +103,7 @@ const EditarPropiedad: React.FC = () => {
                                 <Form.Group className="mb-2">
                                     <Form.Label className="small mb-1">Referencia Catastral</Form.Label>
                                     <Form.Control
-                                        size="sm"
-                                        type="text"
-                                        name="referencia"
-                                        value={formData.referencia}
+                                        size="sm" type="text" name="referencia" value={formData.referencia}
                                         onChange={handleChange}
                                     />
                                 </Form.Group>
@@ -114,17 +113,13 @@ const EditarPropiedad: React.FC = () => {
                         <Form.Group className="mb-2">
                             <Form.Label className="small mb-1">Dirección</Form.Label>
                             <Form.Control
-                                size="sm"
-                                type="text"
-                                name="direccion"
-                                value={formData.direccion}
-                                onChange={handleChange}
-                                required
+                                size="sm" type="text" name="direccion" value={formData.direccion}
+                                onChange={handleChange} required
                             />
                         </Form.Group>
 
                         <Row className="g-2">
-                            <Col md={3}>
+                            <Col md={2}>
                                 <Form.Group className="mb-2">
                                     <Form.Label className="small mb-1">Portal</Form.Label>
                                     <Form.Control size="sm" type="text" name="portal" value={formData.portal} onChange={handleChange} />
@@ -142,7 +137,16 @@ const EditarPropiedad: React.FC = () => {
                                     <Form.Control size="sm" type="text" name="puerta" value={formData.puerta} onChange={handleChange} />
                                 </Form.Group>
                             </Col>
-                            <Col md={5}>
+                            <Col md={3}>
+                                <Form.Group className="mb-2">
+                                    <Form.Label className="small mb-1">Coeficiente (%)</Form.Label>
+                                    <Form.Control
+                                        size="sm" type="number" step="0.01" name="coeficiente"
+                                        value={formData.coeficiente} onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={3}>
                                 <Form.Group className="mb-2">
                                     <Form.Label className="small mb-1">Estado</Form.Label>
                                     <Form.Select size="sm" name="estado" value={formData.estado} onChange={handleChange}>
