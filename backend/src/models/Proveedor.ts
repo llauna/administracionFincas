@@ -48,4 +48,18 @@ const proveedorSchema = new mongoose.Schema({
     trabajos: [trabajoSchema]
 }, { timestamps: true });
 
+export interface GastoFactura {
+    _id?: string;
+    proveedor: string; // ID del proveedor
+    comunidad: string; // ID de la comunidad
+    tipo: 'factura' | 'nota_gasto'; // Nuevo campo para distinguir
+    numeroFactura: string;
+    fechaEmision: Date;
+    importeBase: number; // Añadimos base imponible para mayor claridad
+    iva: number; // Será 0 si es Nota de Gasto
+    importeTotal: number;
+    concepto: string;
+    estado: 'pendiente' | 'pagado';
+}
+
 export default mongoose.models.Proveedor || mongoose.model('Proveedor', proveedorSchema);

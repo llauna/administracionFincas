@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-    Container, Button, Spinner, Alert, Tabs, Tab, Table, Badge, Form, Row, Col, Pagination
+import { Container, Button, Spinner, Alert, Tabs, Tab, Table, Badge, Form, Row, Col, Pagination
 } from 'react-bootstrap';
 import { ComunidadService } from '../../services/ComunidadService';
 import { PropiedadService } from '../../services/PropiedadService';
+import { PropiedadGenerator } from '../../services/PropiedadGenerator';
+import { PropietarioService } from '../../services/PropietarioService';
 import type { Propiedad } from '../../models/Propiedad';
 
 const EditarComunidad: React.FC = () => {
@@ -17,6 +18,7 @@ const EditarComunidad: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [properties, setProperties] = useState<Propiedad[]>([]);
     const [movimientos, setMovimientos] = useState<any[]>([]);
+    const [propietarios, setPropietarios] = useState<any[]>([]);
 
     // Estados para paginación de Propiedades
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,12 +51,13 @@ const EditarComunidad: React.FC = () => {
             if (!id) return;
             setLoading(true);
             try {
-                const [comunidadData, propiedades, dataMovs] = await Promise.all([
+                const [comunidadData, propiedades, dataMovs, listaPropietarios] = await Promise.all([
                     ComunidadService.getById(id),
                     PropiedadService.getByComunidad(id),
                     fetch(`http://localhost:5000/api/movimientos/comunidad/${id}`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    }).then(res => res.json())
+                    }).then(res => res.json()),
+                    PropietarioService.getAll()
                 ]);
 
                 if (comunidadData) {
@@ -75,6 +78,7 @@ const EditarComunidad: React.FC = () => {
                 }
                 setProperties(propiedades || []);
                 setMovimientos(Array.isArray(dataMovs) ? dataMovs : []);
+                setPropietarios(listaPropietarios || []);
             } catch (err) {
                 console.error('Error al cargar datos:', err);
                 setError('Error al cargar los datos de la comunidad');
@@ -86,13 +90,62 @@ const EditarComunidad: React.FC = () => {
         fetchData();
     }, [id]);
 
+    // Función para asignar un propietario directamente desde la tabla
+    const handleAsignarPropietario = async (propiedadId: string, propietarioId: string) => {
+        if (!propietarioId) return;
+        try {
+            await PropiedadService.update(propiedadId, {
+                propietario: propietarioId,
+                estado: 'ocupado'
+            } as any);
+
+            // Recargamos la lista local para ver el cambio
+            const actualizado = await PropiedadService.getByComunidad(id!);
+            setProperties(actualizado);
+        } catch (err) {
+            alert("Error al asignar el propietario");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await ComunidadService.update(id!, formData);
-            navigate('/comunidades');
+            alert('Datos de la comunidad actualizados');
+            // No navegamos fuera para poder seguir editando o generar propiedades
         } catch (err) {
             setError('Error al actualizar la comunidad');
+        }
+    };
+
+    const handleGenerate = async () => {
+        if (!id) return;
+        if (properties.length > 0) {
+            if (!window.confirm("Esta comunidad ya tiene propiedades. Si generas nuevas, se añadirán a las existentes. ¿Deseas continuar?")) return;
+        }
+
+        try {
+            setLoading(true);
+            await PropiedadGenerator.generateForCommunity({
+                direccion: formData.direccion,
+                numPisos: formData.numPisos,
+                pisosPorBloque: formData.pisosPorBloque,
+                tieneLocales: formData.tieneLocales,
+                localesPorPlanta: formData.localesPorPlanta,
+                tieneParking: formData.tieneParking,
+                plazasParking: formData.plazasParking,
+                comunidadId: id
+            });
+
+            // Recargamos las propiedades para que aparezcan en la lista
+            const nuevasPropiedades = await PropiedadService.getByComunidad(id);
+            setProperties(nuevasPropiedades || []);
+            setActiveTab('propiedades'); // Saltamos a la pestaña de lista
+            alert('Propiedades generadas con éxito');
+        } catch (err) {
+            setError('Error al generar las propiedades');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -140,7 +193,7 @@ const EditarComunidad: React.FC = () => {
     return (
         <Container fluid className="px-4 mt-1">
             <div className="d-flex justify-content-between align-items-center mb-2">
-                <h4 className="mb-0 text-primary">Editar Comunidad: {formData.nombre}</h4>
+                <h4 className="mb-0 text-primary small font-weight-bold">Editar Comunidad: {formData.nombre}</h4>
                 <Button variant="outline-secondary" size="sm" onClick={() => navigate('/comunidades')} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>
                     <i className="bi bi-arrow-left"></i> Volver
                 </Button>
@@ -198,6 +251,60 @@ const EditarComunidad: React.FC = () => {
                     </div>
                 </Tab>
 
+                <Tab eventKey="configuracion" title="Generador de Propiedades">
+                    <div className="mt-4 px-3 border rounded p-4 bg-white shadow-sm mx-auto" style={{ maxWidth: '700px' }}>
+                        <h6 className="text-primary mb-3">Parámetros de Generación Automática</h6>
+                        <Alert variant="info" className="py-2 small">
+                            Define la estructura del edificio y pulsa "Generar" para crear todos los pisos, locales y parkings automáticamente.
+                        </Alert>
+                        <Row className="g-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small mb-1 fw-bold">Número de Plantas</Form.Label>
+                                    <Form.Control size="sm" type="number" name="numPisos" value={formData.numPisos} onChange={handleChange} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small mb-1 fw-bold">Viviendas por Planta</Form.Label>
+                                    <Form.Control size="sm" type="number" name="pisosPorBloque" value={formData.pisosPorBloque} onChange={handleChange} />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        <hr />
+
+                        <Row className="g-3">
+                            <Col md={6}>
+                                <Form.Check
+                                    type="checkbox" label="Incluir locales comerciales" name="tieneLocales"
+                                    checked={formData.tieneLocales} onChange={handleChange} className="small fw-bold"
+                                />
+                                {formData.tieneLocales && (
+                                    <Form.Control size="sm" type="number" className="mt-2" placeholder="Cant. locales"
+                                                  name="localesPorPlanta" value={formData.localesPorPlanta} onChange={handleChange} />
+                                )}
+                            </Col>
+                            <Col md={6}>
+                                <Form.Check
+                                    type="checkbox" label="Incluir plazas de parking" name="tieneParking"
+                                    checked={formData.tieneParking} onChange={handleChange} className="small fw-bold"
+                                />
+                                {formData.tieneParking && (
+                                    <Form.Control size="sm" type="number" className="mt-2" placeholder="Cant. plazas"
+                                                  name="plazasParking" value={formData.plazasParking} onChange={handleChange} />
+                                )}
+                            </Col>
+                        </Row>
+
+                        <div className="d-grid gap-2 mt-4">
+                            <Button variant="success" size="sm" className="py-2" onClick={handleGenerate}>
+                                <i className="bi bi-gear-fill me-2"></i> Generar Propiedades Ahora
+                            </Button>
+                        </div>
+                    </div>
+                </Tab>
+
                 <Tab eventKey="propiedades" title={`Propiedades (${filteredProperties.length})`}>
                     <div className="card shadow-sm p-2 bg-white">
                         <div className="d-flex justify-content-between align-items-center mb-2">
@@ -233,12 +340,27 @@ const EditarComunidad: React.FC = () => {
                                             <td>{propiedad.piso || '-'}</td>
                                             <td>{propiedad.puerta || '-'}</td>
                                             <td>
-                                                <Badge bg={propiedad.estado === 'disponible' ? 'success' : propiedad.estado === 'alquilado' ? 'info' : 'primary'} style={{ fontSize: '0.65rem' }}>
+                                                <Badge bg={propiedad.estado === 'disponible' ? 'success' : 'primary'} style={{ fontSize: '0.65rem' }}>
                                                     {propiedad.estado}
                                                 </Badge>
                                             </td>
-                                            <td className="text-truncate" style={{ maxWidth: '120px' }}>
-                                                {propiedad.propietario && typeof propiedad.propietario === 'object' ? (propiedad.propietario as any).nombre : 'Sin prop.'}
+                                            <td style={{ minWidth: '150px' }}>
+                                                {propiedad.propietario ? (
+                                                    <span className="small">
+                                                        {typeof propiedad.propietario === 'object' ? (propiedad.propietario as any).nombre : 'Asignado'}
+                                                    </span>
+                                                ) : (
+                                                    <Form.Select
+                                                        size="sm"
+                                                        style={{ fontSize: '0.7rem', padding: '2px' }}
+                                                        onChange={(e) => handleAsignarPropietario(propiedad._id!, e.target.value)}
+                                                    >
+                                                        <option value="">-- Asignar dueño --</option>
+                                                        {propietarios.map(prop => (
+                                                            <option key={prop._id} value={prop._id}>{prop.nombre}</option>
+                                                        ))}
+                                                    </Form.Select>
+                                                )}
                                             </td>
                                             <td className="text-center">
                                                 <Button variant="primary" size="sm" style={{ padding: '0px 5px', fontSize: '0.7rem' }} onClick={() => navigate(`/propiedades/editar/${propiedad._id}`)}>

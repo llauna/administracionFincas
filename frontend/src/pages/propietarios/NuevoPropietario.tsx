@@ -312,10 +312,11 @@ const NuevoPropietario = () => {
                                 <hr />
 
                                 <div className="row">
-                                    <div className="col-md-6 mb-3">
+                                    <div className="col-md-4 mb-3">
                                         <Form.Group controlId="formTipo">
-                                            <Form.Label>Tipo de Propiedad</Form.Label>
+                                            <Form.Label className="small mb-1 fw-bold">Tipo de Propiedad</Form.Label>
                                             <Form.Control
+                                                size="sm"
                                                 type="text"
                                                 name="tipo"
                                                 value={propiedadData.tipo}
@@ -324,13 +325,16 @@ const NuevoPropietario = () => {
                                             />
                                         </Form.Group>
                                     </div>
-                                    <div className="col-md-6 mb-3">
+                                    <div className="col-md-8 mb-3">
                                         <Form.Group controlId="formReferencia">
+                                            <Form.Label className="small mb-1 fw-bold">Referencia Catastral</Form.Label>
                                             <Form.Control
+                                                size="sm"
                                                 type="text"
                                                 name="referencia"
                                                 value={propiedadData.referencia}
                                                 onChange={handlePropiedadChange}
+                                                placeholder="Introduzca la referencia catastral..."
                                             />
                                         </Form.Group>
                                     </div>
@@ -338,7 +342,7 @@ const NuevoPropietario = () => {
                                 <div className="row">
                                     <div className="col-md-12 mb-3">
                                         <Form.Group controlId="formDireccionPropiedad">
-                                            <Form.Label>Dirección de la Propiedad *</Form.Label>
+                                            <Form.Label className="small mb-1 fw-bold">Dirección de la Propiedad *</Form.Label>
                                             <Form.Control
                                                 required
                                                 type="text"
@@ -354,10 +358,11 @@ const NuevoPropietario = () => {
                                     </div>
                                 </div>
                                 <div className="row">
-                                    <div className="col-md-4 mb-3">
+                                    <div className="col-md-3 mb-3">
                                         <Form.Group controlId="formSuperficie">
-                                            <Form.Label>Superficie (m²)</Form.Label>
+                                            <Form.Label className="small mb-1 fw-bold">Superficie (m²)</Form.Label>
                                             <Form.Control
+                                                size="sm"
                                                 type="number"
                                                 step="0.01"
                                                 name="metrosCuadrados"
@@ -366,10 +371,11 @@ const NuevoPropietario = () => {
                                             />
                                         </Form.Group>
                                     </div>
-                                    <div className="col-md-2 mb-3">
+                                    <div className="col-md-3 mb-3">
                                         <Form.Group controlId="formPortal">
-                                            <Form.Label>Portal</Form.Label>
+                                            <Form.Label className="small mb-1 fw-bold">Portal</Form.Label>
                                             <Form.Control
+                                                size="sm"
                                                 type="text"
                                                 name="portal"
                                                 value={propiedadData.portal || ''}
@@ -379,8 +385,9 @@ const NuevoPropietario = () => {
                                     </div>
                                     <div className="col-md-3 mb-3">
                                         <Form.Group controlId="formPiso">
-                                            <Form.Label>Piso</Form.Label>
+                                            <Form.Label className="small mb-1 fw-bold">Piso</Form.Label>
                                             <Form.Control
+                                                size="sm"
                                                 type="text"
                                                 name="piso"
                                                 value={propiedadData.piso}
@@ -390,8 +397,9 @@ const NuevoPropietario = () => {
                                     </div>
                                     <div className="col-md-3 mb-3">
                                         <Form.Group controlId="formPuerta">
-                                            <Form.Label>Puerta</Form.Label>
+                                            <Form.Label className="small mb-1 fw-bold">Puerta</Form.Label>
                                             <Form.Control
+                                                size="sm"
                                                 type="text"
                                                 name="puerta"
                                                 value={propiedadData.puerta}
@@ -400,7 +408,6 @@ const NuevoPropietario = () => {
                                         </Form.Group>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </Tab>

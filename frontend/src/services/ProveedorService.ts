@@ -19,16 +19,15 @@ export const ProveedorService = {
         return response.json();
     },
 
-    async getById(id: string): Promise<Proveedor> {
-        const response = await fetch(`${API_URL}/${id}`, { headers: getAuthHeader() });
-        return response.json();
-    },
-
     async createFactura(factura: any): Promise<any> {
-        // CAMBIO: Apuntar a la ruta correcta de proveedores para el reparto
-        const response = await fetch(`${API_URL}/registrar-gasto`, {
+        const token = localStorage.getItem('token');
+        // Usamos la ruta directa a movimientos
+        const response = await fetch('http://localhost:5000/api/movimientos/registrar-gasto', {
             method: 'POST',
-            headers: getAuthHeader(),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(factura)
         });
 
@@ -36,7 +35,6 @@ export const ProveedorService = {
             const errorData = await response.json();
             throw new Error(errorData.mensaje || 'Error en el servidor');
         }
-
         return response.json();
     }
 };

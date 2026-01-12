@@ -1,83 +1,118 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Badge, Form, Modal, Row, Col } from 'react-bootstrap';
+import { Container, Table, Button, Badge, Form, Modal, Row, Col, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { ProveedorService } from '../../services/ProveedorService';
 import { ComunidadService } from '../../services/ComunidadService';
-import type {Proveedor} from '../../models/Proveedor';
+import type { Proveedor } from '../../models/Proveedor';
 
 const GestionProveedores: React.FC = () => {
     const navigate = useNavigate();
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+    const [error, setError] = useState('');
+
     const [showModal, setShowModal] = useState(false);
     const [nuevoProveedor, setNuevoProveedor] = useState<Proveedor>({
-        nombre: '',
-        nif: '',
-        direccion: '',
-        poblacion: '',
-        cp: '',
-        tipoServicio: 'Limpieza',
-        actividad: '',
-        telefono: '',
-        email: ''
+        nombre: '', nif: '', direccion: '', poblacion: '', cp: '',
+        tipoServicio: 'Limpieza', actividad: '', telefono: '', email: ''
     });
+
     const [showFacturaModal, setShowFacturaModal] = useState(false);
+    const [modoEdicionFactura, setModoEdicionFactura] = useState(false);
     const [comunidades, setComunidades] = useState<any[]>([]);
     const [currentProveedor, setCurrentProveedor] = useState<Proveedor | null>(null);
+
     const [datosFactura, setDatosFactura] = useState({
-        comunidadId: '',
-        importeTotal: 0,
-        concepto: ''
+        comunidadId: '', tipo: 'factura' as 'factura' | 'nota_gasto',
+        numeroFactura: '', importeBase: 0, iva: 21, importeTotal: 0, concepto: ''
     });
-    // Nuevo estado para ver facturas
+
     const [facturasProveedor, setFacturasProveedor] = useState<any[]>([]);
-    const [showListadoModal, setShowListadoModal] = useState(false);
+    const [detallesReparto, setDetallesReparto] = useState<any[]>([]);
+    const [showDetalleModal, setShowDetalleModal] = useState(false);
 
     const handleLoad = async () => {
-        const [dataP, dataC] = await Promise.all([
-            ProveedorService.getAll(),
-            ComunidadService.getAll()
-        ]);
-        setProveedores(dataP);
-        setComunidades(dataC);
+        try {
+            const [dataP, dataC] = await Promise.all([
+                ProveedorService.getAll(),
+                ComunidadService.getAll()
+            ]);
+            setProveedores(dataP);
+            setComunidades(dataC);
+        } catch (err) {
+            setError("Error al cargar datos iniciales.");
+        }
     };
 
-    const handleOpenFactura = (proveedor: Proveedor) => {
+    const cargarFacturas = async (proveedorId: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`http://localhost:5000/api/movimientos/proveedor/${proveedorId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                // Aseguramos que el comunidadId esté presente para el recalcular
+                const formateados = data.map(f => ({
+                    ...f,
+                    comunidadId: f.comunidadId || (f.reparto && f.reparto[0]?.comunidad)
+                }));
+                setFacturasProveedor(formateados);
+            }
+        } catch (error) {
+            console.error("Error cargando facturas", error);
+        }
+    };
+
+    const handleOpenFactura = async (proveedor: Proveedor) => {
         setCurrentProveedor(proveedor);
+        setModoEdicionFactura(false);
+        await cargarFacturas(proveedor._id!);
+        setDatosFactura({
+            comunidadId: '', tipo: 'factura', numeroFactura: '',
+            importeBase: 0, iva: 21, importeTotal: 0, concepto: ''
+        });
         setShowFacturaModal(true);
     };
 
-    // Nueva función para ver facturas existentes
-    const handleVerFacturas = async (proveedor: Proveedor) => {
-        setCurrentProveedor(proveedor);
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                alert('Sesión expirada. Por favor, vuelve a entrar.');
-                return;
+    const handleVerDetalle = (factura: any) => {
+        setDetallesReparto(factura.reparto || []);
+        setShowDetalleModal(true);
+    };
+
+    const handleRecalcular = async (f: any) => {
+        if (window.confirm(`¿Deseas recalcular el reparto de "${f._id}"?`)) {
+            try {
+                const cId = f.comunidadId;
+                if (!cId) throw new Error("No se encontró el ID de la comunidad.");
+
+                await fetch(`http://localhost:5000/api/movimientos/bulk-delete`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ descripcion: f._id, proveedorId: currentProveedor?._id })
+                });
+
+                const soloConcepto = f._id.split(' (Factura:')[0];
+                const soloNumero = f._id.match(/\(Factura: (.*?)\)/)?.[1] || "";
+
+                await ProveedorService.createFactura({
+                    comunidadId: cId,
+                    proveedorId: currentProveedor?._id,
+                    concepto: soloConcepto,
+                    numeroFactura: soloNumero,
+                    importeTotal: f.importeTotal,
+                    tipo: 'factura'
+                });
+
+                alert("Reparto recalculado.");
+                await cargarFacturas(currentProveedor?._id!);
+            } catch (err: any) {
+                setError("Error al recalcular: " + err.message);
             }
-
-            const res = await fetch(`http://localhost:5000/api/movimientos/proveedor/${proveedor._id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!res.ok) {
-                if (res.status === 401) throw new Error('No autorizado');
-                throw new Error('Error en el servidor');
-            }
-
-            const data = await res.json();
-            setFacturasProveedor(Array.isArray(data) ? data : []);
-            setShowListadoModal(true);
-        } catch (error) {
-            console.error(error);
-            alert('Error al cargar facturas. Intenta cerrar sesión y volver a entrar.');
         }
     };
 
     const handleDeleteFactura = async (facturaGroup: any) => {
-        if (window.confirm(`¿Seguro que quieres eliminar todos los registros de "${facturaGroup._id}"?`)) {
+        if (window.confirm(`¿Seguro que quieres eliminar la factura "${facturaGroup._id}"?`)) {
             try {
                 await fetch(`http://localhost:5000/api/movimientos/bulk-delete`, {
                     method: 'DELETE',
@@ -85,37 +120,39 @@ const GestionProveedores: React.FC = () => {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        descripcion: facturaGroup._id,
-                        proveedorId: currentProveedor?._id
-                    })
+                    body: JSON.stringify({ descripcion: facturaGroup._id, proveedorId: currentProveedor?._id })
                 });
-                // Recargamos el modal
-                handleVerFacturas(currentProveedor!);
-            } catch (error) {
-                alert('Error al eliminar el bloque de facturas');
+                await cargarFacturas(currentProveedor!._id!);
+            } catch (err) {
+                setError("No se pudo eliminar.");
             }
         }
     };
 
-
     const handleSubmitFactura = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await ProveedorService.createFactura({
-                ...datosFactura,
-                proveedorId: currentProveedor?._id
-            });
-            alert('Gasto repartido con éxito entre todos los propietarios.');
-            setShowFacturaModal(false);
+            const conceptoUnico = `${datosFactura.concepto} (Factura: ${datosFactura.numeroFactura})`;
+            await ProveedorService.createFactura({ ...datosFactura, concepto: conceptoUnico, proveedorId: currentProveedor?._id });
+            alert('Gasto registrado con éxito.');
+            setModoEdicionFactura(false);
+            await cargarFacturas(currentProveedor?._id!);
         } catch (error) {
-            alert('Error al repartir el gasto.');
+            setError("Error al registrar factura.");
         }
+    };
+
+    const recalcularTotales = (base: number, iva: number, tipo: string) => {
+        const total = tipo === 'factura' ? base * (1 + iva / 100) : base;
+        setDatosFactura(prev => ({
+            ...prev, importeBase: base, iva: tipo === 'factura' ? iva : 0,
+            importeTotal: Number(total.toFixed(2)), tipo: tipo as any
+        }));
     };
 
     useEffect(() => { handleLoad(); }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmitProveedor = async (e: React.FormEvent) => {
         e.preventDefault();
         await ProveedorService.create(nuevoProveedor);
         setShowModal(false);
@@ -124,187 +161,122 @@ const GestionProveedores: React.FC = () => {
 
     return (
         <Container fluid className="px-4 mt-2">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+            {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
+
+            <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex align-items-center gap-3">
-                    <h4 className="text-primary mb-0 small font-weight-bold">Mantenimiento de Proveedores</h4>
-                    <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        onClick={() => navigate('/dashboard')}
-                        style={{ padding: '2px 8px', fontSize: '0.8rem' }}
-                    >
-                        <i className="bi bi-arrow-left me-1"></i> Volver
+                    <h4 className="text-primary mb-0 font-weight-bold">Mantenimiento de Proveedores</h4>
+                    <Button variant="outline-secondary" size="sm" onClick={() => navigate('/dashboard')}>
+                        <i className="bi bi-arrow-left"></i> Volver
                     </Button>
                 </div>
-                <Button variant="success" size="sm" onClick={() => setShowModal(true)}>
-                    <i className="bi bi-plus-lg"></i> Nuevo Proveedor
-                </Button>
+                <Button variant="success" size="sm" onClick={() => setShowModal(true)}>Nuevo Proveedor</Button>
             </div>
 
-            <Table striped hover size="sm" style={{ fontSize: '0.8rem' }}>
+            <Table striped hover size="sm" style={{ fontSize: '0.85rem' }}>
                 <thead className="table-dark">
-                <tr>
-                    <th>Nombre / Empresa</th>
-                    <th>CIF</th>
-                    <th>Servicio</th>
-                    <th>Contacto</th>
-                    <th className="text-center">Acciones</th>
-                </tr>
+                <tr><th>Nombre Comercial</th><th>CIF</th><th>Servicio</th><th className="text-center">Acciones</th></tr>
                 </thead>
                 <tbody>
                 {proveedores.map(p => (
                     <tr key={p._id}>
-                        <td>{p.nombre}</td>
-                        <td>{p.nif}</td>
+                        <td>{p.nombre}</td><td>{p.nif}</td>
                         <td><Badge bg="info" className="text-dark">{p.tipoServicio}</Badge></td>
-                        <td>{p.telefono} | {p.email}</td>
                         <td className="text-center">
-                            <Button
-                                variant="outline-primary" size="sm" className="py-0 px-2 small me-2"
-                                onClick={() => handleOpenFactura(p)}
-                            >
-                                Facturas
-                            </Button>
-                            <Button
-                                variant="outline-info" size="sm" className="py-0 px-2 small"
-                                onClick={() => handleVerFacturas(p)}
-                            >
-                                Ver Histórico
-                            </Button>
+                            <Button variant="outline-primary" size="sm" onClick={() => handleOpenFactura(p)}>Facturas / Histórico</Button>
                         </td>
                     </tr>
                 ))}
                 </tbody>
             </Table>
 
-            {/* MODAL PARA VER Y BORRAR FACTURAS (ESTE BLOQUE TE FALTABA) */}
-            <Modal show={showListadoModal} onHide={() => setShowListadoModal(false)} size="lg" centered>
-                <Modal.Header closeButton className="py-2">
-                    <Modal.Title className="h6">Historial de Facturas: {currentProveedor?.nombre}</Modal.Title>
+            <Modal show={showFacturaModal} onHide={() => setShowFacturaModal(false)} size="xl" centered>
+                <Modal.Header closeButton className="py-2 bg-light">
+                    <Modal.Title className="h6">Gestión de Facturas: {currentProveedor?.nombre}</Modal.Title>
                 </Modal.Header>
+                <Modal.Body className={modoEdicionFactura ? 'py-3' : 'p-0'}>
+                    {!modoEdicionFactura ? (
+                        <>
+                            <div className="p-2 d-flex justify-content-end bg-light border-bottom">
+                                <Button variant="success" size="sm" onClick={() => setModoEdicionFactura(true)}>+ Registrar Factura</Button>
+                            </div>
+                            <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.8rem' }}>
+                                <thead className="table-light">
+                                <tr>
+                                    <th style={{ width: '100px' }}>Fecha</th>
+                                    <th>Concepto / Nº</th>
+                                    <th className="text-end" style={{ width: '120px' }}>Total</th>
+                                    <th className="text-center" style={{ width: '120px' }}>Acciones</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {facturasProveedor.length > 0 ? facturasProveedor.map((f, i) => (
+                                    <tr key={i} className="align-middle">
+                                        <td>{new Date(f.fecha).toLocaleDateString()}</td>
+                                        <td>
+                                            <Button variant="link" className="p-0 text-decoration-none fw-bold" onClick={() => handleVerDetalle(f)}>
+                                                {f._id} <i className="bi bi-eye ms-1"></i>
+                                            </Button>
+                                        </td>
+                                        <td className="fw-bold text-end pe-3 text-danger">{Number(f.importeTotal).toFixed(2)}€</td>
+                                        <td className="text-center">
+                                            <div className="d-flex justify-content-center gap-2">
+                                                <Button variant="warning" size="sm" style={{ width: '32px', height: '32px', color: 'white' }} onClick={() => handleRecalcular(f)} title="Recalcular"><i className="bi bi-arrow-repeat"></i></Button>
+                                                <Button variant="danger" size="sm" style={{ width: '32px', height: '32px' }} onClick={() => handleDeleteFactura(f)} title="Borrar"><i className="bi bi-trash"></i></Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr><td colSpan={4} className="text-center py-4 text-muted">Sin facturas registradas</td></tr>
+                                )}
+                                </tbody>
+                            </Table>
+                        </>
+                    ) : (
+                        <Form onSubmit={handleSubmitFactura} className="px-4 py-3">
+                            <Row className="g-3">
+                                <Col md={6}><Form.Label className="small mb-0 fw-bold">Comunidad</Form.Label>
+                                    <Form.Select size="sm" required value={datosFactura.comunidadId} onChange={e => setDatosFactura({...datosFactura, comunidadId: e.target.value})}>
+                                        <option value="">Seleccione...</option>{comunidades.map(c => <option key={c._id} value={c._id}>{c.nombre}</option>)}
+                                    </Form.Select></Col>
+                                <Col md={6}><Form.Label className="small mb-0 fw-bold">Tipo</Form.Label>
+                                    <Form.Select size="sm" value={datosFactura.tipo} onChange={e => recalcularTotales(datosFactura.importeBase, datosFactura.iva, e.target.value)}>
+                                        <option value="factura">Factura</option><option value="nota_gasto">Nota Gasto</option>
+                                    </Form.Select></Col>
+                            </Row>
+                            <Row className="g-3 mt-1">
+                                <Col md={4}><Form.Label className="small mb-0">Nº Factura</Form.Label><Form.Control size="sm" required value={datosFactura.numeroFactura} onChange={e => setDatosFactura({...datosFactura, numeroFactura: e.target.value})} /></Col>
+                                <Col md={4}><Form.Label className="small mb-0">Base (€)</Form.Label><Form.Control size="sm" type="number" step="0.01" required value={datosFactura.importeBase} onChange={e => recalcularTotales(Number(e.target.value), datosFactura.iva, datosFactura.tipo)} /></Col>
+                                <Col md={4}><Form.Label className="small mb-0">IVA %</Form.Label><Form.Control size="sm" type="number" disabled={datosFactura.tipo === 'nota_gasto'} value={datosFactura.iva} onChange={e => recalcularTotales(datosFactura.importeBase, Number(e.target.value), datosFactura.tipo)} /></Col>
+                            </Row>
+                            <div className="p-3 bg-light border rounded mt-3 text-end">Total: <strong className="text-primary h4 mb-0">{datosFactura.importeTotal.toFixed(2)}€</strong></div>
+                            <Form.Group className="mt-3"><Form.Label className="small mb-0 fw-bold">Concepto</Form.Label><Form.Control size="sm" as="textarea" rows={2} required value={datosFactura.concepto} onChange={e => setDatosFactura({...datosFactura, concepto: e.target.value})} /></Form.Group>
+                            <div className="d-flex justify-content-between mt-4"><Button variant="secondary" onClick={() => setModoEdicionFactura(false)}>Volver</Button><Button variant="primary" type="submit">Generar Reparto</Button></div>
+                        </Form>
+                    )}
+                </Modal.Body>
+            </Modal>
+
+            <Modal show={showDetalleModal} onHide={() => setShowDetalleModal(false)} size="lg" centered>
+                <Modal.Header closeButton className="py-2 bg-primary text-white"><Modal.Title className="h6">Desglose de Reparto</Modal.Title></Modal.Header>
                 <Modal.Body className="p-0">
-                    <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.75rem' }}>
-                        <thead className="table-light">
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Concepto</th>
-                            <th>Importe</th>
-                            <th className="text-center">Acción</th>
-                        </tr>
-                        </thead>
+                    <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.85rem' }}>
+                        <thead className="table-light"><tr><th>Propiedad</th><th className="text-end">Cuota (€)</th></tr></thead>
                         <tbody>
-                        {facturasProveedor.length > 0 ? facturasProveedor.map((f, index) => (
-                            <tr key={index}>
-                                <td>{new Date(f.fecha).toLocaleDateString()}</td>
-                                <td>{f._id}</td>
-                                <td className="fw-bold text-danger">{f.importeTotal.toFixed(2)}€</td>
-                                <td className="text-center" style={{ width: '80px' }}>
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        className="d-flex align-items-center justify-content-center mx-auto"
-                                        style={{ width: '30px', height: '30px' }}
-                                        onClick={() => handleDeleteFactura(f)}
-                                    >
-                                        <i className="bi bi-trash"></i>
-                                    </Button>
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan={4} className="text-center py-3">No hay facturas registradas</td></tr>
-                        )}
+                        {detallesReparto.map((d, i) => (
+                            <tr key={i}><td>Piso {d.piso || '-'} - Pta {d.puerta || '-'}</td><td className="text-end fw-bold">{Number(d.importe || 0).toFixed(2)}€</td></tr>
+                        ))}
                         </tbody>
                     </Table>
                 </Modal.Body>
             </Modal>
-            {/* MODAL DE ALTA */}
-            <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
-                <Modal.Header closeButton className="py-2"><Modal.Title className="h6">Nuevo Proveedor</Modal.Title></Modal.Header>
-                <Modal.Body className="py-2">
-                    <Form onSubmit={handleSubmit}>
-                        <Row className="g-2">
-                            <Col md={8}>
-                                <Form.Group><Form.Label className="small mb-0">Nombre Comercial</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.nombre} onChange={e => setNuevoProveedor({...nuevoProveedor, nombre: e.target.value})} /></Form.Group>
-                            </Col>
-                            <Col md={4}>
-                                <Form.Group><Form.Label className="small mb-0">CIF/NIF</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.nif} onChange={e => setNuevoProveedor({...nuevoProveedor, nif: e.target.value})} /></Form.Group>
-                            </Col>
-                        </Row>
 
-                        <Row className="g-2 mt-1">
-                            <Col md={6}>
-                                <Form.Group><Form.Label className="small mb-0">Dirección</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.direccion} onChange={e => setNuevoProveedor({...nuevoProveedor, direccion: e.target.value})} /></Form.Group>
-                            </Col>
-                            <Col md={4}>
-                                <Form.Group><Form.Label className="small mb-0">Población</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.poblacion} onChange={e => setNuevoProveedor({...nuevoProveedor, poblacion: e.target.value})} /></Form.Group>
-                            </Col>
-                            <Col md={2}>
-                                <Form.Group><Form.Label className="small mb-0">CP</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.cp} onChange={e => setNuevoProveedor({...nuevoProveedor, cp: e.target.value})} /></Form.Group>
-                            </Col>
-                        </Row>
-
-                        <Row className="g-2 mt-1">
-                            <Col md={4}>
-                                <Form.Group><Form.Label className="small mb-0">Tipo de Servicio</Form.Label>
-                                    <Form.Select size="sm" value={nuevoProveedor.tipoServicio} onChange={e => setNuevoProveedor({...nuevoProveedor, tipoServicio: e.target.value})}>
-                                        <option value="Limpieza">Limpieza</option><option value="Fontanería">Fontanería</option>
-                                        <option value="Electricidad">Electricidad</option><option value="Ascensores">Ascensores</option>
-                                        <option value="Seguros">Seguros</option><option value="Otros">Otros</option>
-                                    </Form.Select></Form.Group>
-                            </Col>
-                            <Col md={4}>
-                                <Form.Group><Form.Label className="small mb-0">Actividad</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.actividad} onChange={e => setNuevoProveedor({...nuevoProveedor, actividad: e.target.value})} /></Form.Group>
-                            </Col>
-                            <Col md={4}>
-                                <Form.Group><Form.Label className="small mb-0">Teléfono</Form.Label>
-                                    <Form.Control size="sm" required value={nuevoProveedor.telefono} onChange={e => setNuevoProveedor({...nuevoProveedor, telefono: e.target.value})} /></Form.Group>
-                            </Col>
-                        </Row>
-
-                        <Row className="g-2 mt-1">
-                            <Col md={12}>
-                                <Form.Group><Form.Label className="small mb-0">Email</Form.Label>
-                                    <Form.Control size="sm" type="email" required value={nuevoProveedor.email} onChange={e => setNuevoProveedor({...nuevoProveedor, email: e.target.value})} /></Form.Group>
-                            </Col>
-                        </Row>
-
-                        <div className="text-end mt-3">
-                            <Button variant="secondary" size="sm" onClick={() => setShowModal(false)} className="me-2">Cancelar</Button>
-                            <Button variant="primary" size="sm" type="submit">Guardar Proveedor</Button>
-                        </div>
-                    </Form>
-                </Modal.Body>
-            </Modal>
-
-            <Modal show={showFacturaModal} onHide={() => setShowFacturaModal(false)} centered>
-                <Modal.Header closeButton className="py-2"><Modal.Title className="h6">Registrar Factura / Gasto</Modal.Title></Modal.Header>
+            <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+                <Modal.Header closeButton><Modal.Title className="h6">Nuevo Proveedor</Modal.Title></Modal.Header>
                 <Modal.Body>
-                    <Form onSubmit={handleSubmitFactura}>
-                        <p className="small text-muted mb-2">Proveedor: <strong>{currentProveedor?.nombre}</strong></p>
-                        <Form.Group className="mb-2">
-                            <Form.Label className="small mb-0">Comunidad</Form.Label>
-                            <Form.Select size="sm" required onChange={e => setDatosFactura({...datosFactura, comunidadId: e.target.value})}>
-                                <option value="">Seleccione Comunidad...</option>
-                                {comunidades.map(c => <option key={c._id} value={c._id}>{c.nombre}</option>)}
-                            </Form.Select>
-                        </Form.Group>
-                        <Form.Group className="mb-2">
-                            <Form.Label className="small mb-0">Importe Total (IVA incluido)</Form.Label>
-                            <Form.Control size="sm" type="number" step="0.01" required onChange={e => setDatosFactura({...datosFactura, importeTotal: Number(e.target.value)})} />
-                        </Form.Group>
-                        <Form.Group className="mb-2">
-                            <Form.Label className="small mb-0">Concepto / Descripción</Form.Label>
-                            <Form.Control size="sm" as="textarea" rows={2} required onChange={e => setDatosFactura({...datosFactura, concepto: e.target.value})} />
-                        </Form.Group>
-                        <div className="text-end mt-3">
-                            <Button variant="primary" size="sm" type="submit">Generar Reparto por Coeficiente</Button>
-                        </div>
+                    <Form onSubmit={handleSubmitProveedor}>
+                        <Form.Label className="small">Nombre</Form.Label><Form.Control size="sm" required value={nuevoProveedor.nombre} onChange={e => setNuevoProveedor({...nuevoProveedor, nombre: e.target.value})} />
+                        <div className="text-end mt-3"><Button variant="primary" size="sm" type="submit">Guardar</Button></div>
                     </Form>
                 </Modal.Body>
             </Modal>

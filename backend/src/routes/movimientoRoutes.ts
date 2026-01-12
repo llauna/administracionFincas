@@ -19,5 +19,10 @@ router.get('/comunidad/:comunidadId', async (req, res) => {
 
 router.get('/proveedor/:proveedorId', authenticate, movimientoController.getMovimientosPorProveedor);
 router.delete('/bulk-delete', authenticate, movimientoController.deleteMovimientosAgrupados);
+router.post('/registrar-gasto', (req, res, next) => {
+    console.log("➡️ Intentando acceder a /api/movimientos/registrar-gasto");
+    next();
+}, movimientoController.registrarGasto);
+
 
 export default router;

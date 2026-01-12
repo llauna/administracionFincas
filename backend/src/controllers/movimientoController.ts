@@ -1,35 +1,44 @@
 import { Request, Response } from 'express';
 import mongoose from "mongoose";
-import Movimiento from '../models/Movimiento'; // Esta línea debería dejar de dar error ahora
+import Movimiento from '../models/Movimiento';
 import Propiedad from '../models/Propiedad';
 
-export const crearGastoRepartido = async (req: Request, res: Response) => {
+export const registrarGasto = async (req: Request, res: Response) => {
+    console.log("🚀 Iniciando proceso de registro de gasto...");
     try {
-        const { comunidadId, importeTotal, descripcion, proveedorId } = req.body;
+        const { comunidadId, proveedorId, concepto, importeTotal, tipo, numeroFactura } = req.body;
 
-        // Buscamos propiedades de la comunidad
         const propiedades = await Propiedad.find({ comunidad: comunidadId });
 
-        if (!propiedades.length) {
+        if (!propiedades || propiedades.length === 0) {
+            console.log("⚠️ No se encontraron propiedades");
             return res.status(404).json({ mensaje: 'No hay propiedades en esta comunidad' });
         }
 
-        // Generamos los movimientos repartidos
-        const movimientos = propiedades.map(prop => ({
-            fecha: new Date(),
-            descripcion: `${descripcion} (Piso ${prop.piso || ''} ${prop.puerta || ''})`,
-            importe: Number((importeTotal * (prop.coeficiente / 100)).toFixed(2)),
-            tipo: 'Gasto',
-            comunidad: comunidadId,
-            propiedad: prop._id,
-            propietario: prop.propietario,
-            proveedor: proveedorId
-        }));
+        const movimientos = propiedades.map(prop => {
+            const coeficiente = prop.coeficiente || 0;
+            const parteProporcional = Number((importeTotal * (coeficiente / 100)).toFixed(2));
+
+            return {
+                comunidad: comunidadId,
+                propiedad: prop._id,
+                propietario: prop.propietario,
+                proveedor: proveedorId,
+                fecha: new Date(),
+                descripcion: concepto,
+                importe: parteProporcional,
+                tipo: 'Gasto',
+                categoria: tipo || 'factura'
+            };
+        });
 
         await Movimiento.insertMany(movimientos);
-        res.status(201).json({ mensaje: 'Gasto repartido con éxito' });
+        console.log("✅ Reparto completado con éxito");
+        return res.status(201).json({ mensaje: 'Gasto repartido correctamente' });
+
     } catch (error: any) {
-        res.status(500).json({ mensaje: 'Error al repartir gasto', error: error.message });
+        console.error("❌ ERROR CRÍTICO en registrarGasto:", error.message);
+        return res.status(500).json({ mensaje: 'Error interno del servidor', error: error.message });
     }
 };
 
@@ -40,17 +49,34 @@ export const getMovimientosPorProveedor = async (req: Request, res: Response) =>
         const movimientosAgrupados = await Movimiento.aggregate([
             { $match: { proveedor: new mongoose.Types.ObjectId(proveedorId) } },
             {
+                $lookup: {
+                    from: 'propiedads',
+                    localField: 'propiedad',
+                    foreignField: '_id',
+                    as: 'infoPropiedad'
+                }
+            },
+            {
                 $group: {
-                    _id: "$descripcion", // Agrupamos por el concepto
+                    _id: "$descripcion",
                     fecha: { $first: "$fecha" },
+                    comunidadId: { $first: "$comunidad" }, // AÑADIMOS ESTO PARA EL FRONTEND
                     importeTotal: { $sum: "$importe" },
-                    ids: { $push: "$_id" } // Guardamos los IDs para poder borrar todo el bloque
+                    reparto: {
+                        $push: {
+                            piso: { $arrayElemAt: ["$infoPropiedad.piso", 0] },
+                            puerta: { $arrayElemAt: ["$infoPropiedad.puerta", 0] },
+                            importe: "$importe",
+                            comunidad: "$comunidad" // También lo metemos aquí por seguridad
+                        }
+                    }
                 }
             },
             { $sort: { fecha: -1 } }
         ]);
 
         res.json(movimientosAgrupados);
+
     } catch (error: any) {
         res.status(500).json({ mensaje: 'Error al obtener movimientos', error: error.message });
     }
@@ -60,7 +86,6 @@ export const deleteMovimientosAgrupados = async (req: Request, res: Response) =>
     try {
         const { descripcion, proveedorId } = req.body;
 
-        // Borramos todos los movimientos que coincidan con estos criterios
         const resultado = await Movimiento.deleteMany({
             descripcion: descripcion,
             proveedor: proveedorId

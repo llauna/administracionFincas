@@ -86,9 +86,9 @@ const EditarPropiedad: React.FC = () => {
 
                     <Form onSubmit={handleSubmit}>
                         <Row className="g-2">
-                            <Col md={6}>
+                            <Col md={4}>
                                 <Form.Group className="mb-2">
-                                    <Form.Label className="small mb-1">Tipo</Form.Label>
+                                    <Form.Label className="small mb-1">Tipo de Propiedad</Form.Label>
                                     <Form.Select size="sm" name="tipo" value={formData.tipo} onChange={handleChange}>
                                         <option value="piso">Piso</option>
                                         <option value="local">Local</option>
@@ -99,26 +99,18 @@ const EditarPropiedad: React.FC = () => {
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
-                            <Col md={6}>
+                            <Col md={8}>
                                 <Form.Group className="mb-2">
-                                    <Form.Label className="small mb-1">Referencia Catastral</Form.Label>
+                                    <Form.Label className="small mb-1">Dirección</Form.Label>
                                     <Form.Control
-                                        size="sm" type="text" name="referencia" value={formData.referencia}
-                                        onChange={handleChange}
+                                        size="sm" type="text" name="direccion" value={formData.direccion}
+                                        onChange={handleChange} required
                                     />
                                 </Form.Group>
                             </Col>
                         </Row>
 
-                        <Form.Group className="mb-2">
-                            <Form.Label className="small mb-1">Dirección</Form.Label>
-                            <Form.Control
-                                size="sm" type="text" name="direccion" value={formData.direccion}
-                                onChange={handleChange} required
-                            />
-                        </Form.Group>
-
-                        <Row className="g-2">
+                        <Row className="g-2 mt-1">
                             <Col md={2}>
                                 <Form.Group className="mb-2">
                                     <Form.Label className="small mb-1">Portal</Form.Label>
@@ -137,6 +129,18 @@ const EditarPropiedad: React.FC = () => {
                                     <Form.Control size="sm" type="text" name="puerta" value={formData.puerta} onChange={handleChange} />
                                 </Form.Group>
                             </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-2">
+                                    <Form.Label className="small mb-1">Referencia Catastral</Form.Label>
+                                    <Form.Control
+                                        size="sm" type="text" name="referencia" value={formData.referencia}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        <Row className="g-2 mt-1">
                             <Col md={3}>
                                 <Form.Group className="mb-2">
                                     <Form.Label className="small mb-1">Coeficiente (%)</Form.Label>
@@ -148,7 +152,16 @@ const EditarPropiedad: React.FC = () => {
                             </Col>
                             <Col md={3}>
                                 <Form.Group className="mb-2">
-                                    <Form.Label className="small mb-1">Estado</Form.Label>
+                                    <Form.Label className="small mb-1">M² Superficie</Form.Label>
+                                    <Form.Control
+                                        size="sm" type="number" name="metrosCuadrados"
+                                        value={formData.metrosCuadrados} onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-2">
+                                    <Form.Label className="small mb-1">Estado de la Propiedad</Form.Label>
                                     <Form.Select size="sm" name="estado" value={formData.estado} onChange={handleChange}>
                                         <option value="disponible">Disponible</option>
                                         <option value="alquilado">Alquilado</option>
@@ -160,7 +173,7 @@ const EditarPropiedad: React.FC = () => {
                             </Col>
                         </Row>
 
-                        <div className="d-flex justify-content-end gap-2 mt-3">
+                        <div className="d-flex justify-content-end gap-2 mt-4">
                             <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>Volver</Button>
                             <Button variant="primary" size="sm" type="submit">Actualizar</Button>
                         </div>
