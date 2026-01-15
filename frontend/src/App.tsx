@@ -29,13 +29,13 @@ import GestionProveedores from "./pages/proveedores/GestionProveedores";
 import Incidencias from "./pages/incidencias/Incidencias";
 import NuevaIncidencia from "./pages/incidencias/NuevaIncidencia";
 import DetalleIncidencia from "./pages/incidencias/DetalleIncidencia";
+import EstadosFinancieros from './pages/documentacion/EstadosFinancieros';
 
 function App() {
     return (
         <Router>
             <AuthProvider>
-                <ToastContainer position={"top-right"} autoClose={5000} />
-                <AppContent />
+                <ToastContainer position={"top-right"} autoClose={5000} />                <AppContent />
             </AuthProvider>
         </Router>
     );
@@ -73,6 +73,8 @@ function AppContent() {
                         <Route path="/perfil" element={<Perfil />} />
                         <Route path="/gestion-usuarios" element={<GestionUsuarios />} />
                         <Route path="/usuarios/listado" element={<ListadoUsuarios />} />
+
+                        <Route path="/documentacion/estados-financieros" element={<EstadosFinancieros />} />
 
                         <Route path="/incidencias" element={<Incidencias />} />
                         <Route path="/incidencias/nueva" element={<NuevaIncidencia />} />

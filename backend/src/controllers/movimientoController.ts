@@ -96,3 +96,25 @@ export const deleteMovimientosAgrupados = async (req: Request, res: Response) =>
         res.status(500).json({ mensaje: 'Error al eliminar movimientos', error: error.message });
     }
 };
+
+export const getByComunidadAndYear = async (req: Request, res: Response) => {
+    try {
+        const { comunidadId, year } = req.params;
+
+        // Creamos el rango de fechas para el año (desde 1 de enero hasta 31 de diciembre)
+        const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+        const endDate = new Date(`${year}-12-31T23:59:59.999Z`);
+
+        const movimientos = await Movimiento.find({
+            comunidad: comunidadId,
+            fecha: {
+                $gte: startDate,
+                $lte: endDate
+            }
+        }).sort({ fecha: 1 }); // Ordenados por fecha ascendente
+
+        res.json(movimientos);
+    } catch (error: any) {
+        res.status(500).json({ mensaje: 'Error al obtener movimientos', error: error.message });
+    }
+};

@@ -203,10 +203,10 @@ const GestionProveedores: React.FC = () => {
                             <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.8rem' }}>
                                 <thead className="table-light">
                                 <tr>
-                                    <th style={{ width: '100px' }}>Fecha</th>
-                                    <th>Concepto / Nº</th>
-                                    <th className="text-end" style={{ width: '120px' }}>Total</th>
-                                    <th className="text-center" style={{ width: '120px' }}>Acciones</th>
+                                    <th style={{ width: '90px' }}>Fecha</th>
+                                    <th style={{ width: '40%' }}>Concepto / Nº</th>
+                                    <th className="text-end" style={{ width: '100px' }}>Total</th>
+                                    <th className="text-center" style={{ width: '200px' }}>Acciones</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -221,8 +221,8 @@ const GestionProveedores: React.FC = () => {
                                         <td className="fw-bold text-end pe-3 text-danger">{Number(f.importeTotal).toFixed(2)}€</td>
                                         <td className="text-center">
                                             <div className="d-flex justify-content-center gap-2">
-                                                <Button variant="warning" size="sm" style={{ width: '32px', height: '32px', color: 'white' }} onClick={() => handleRecalcular(f)} title="Recalcular"><i className="bi bi-arrow-repeat"></i></Button>
-                                                <Button variant="danger" size="sm" style={{ width: '32px', height: '32px' }} onClick={() => handleDeleteFactura(f)} title="Borrar"><i className="bi bi-trash"></i></Button>
+                                                <Button variant="warning" size="sm" onClick={() => handleRecalcular(f)} title="Recalcular"><i className="bi bi-arrow-repeat"></i>Recalcular</Button>
+                                                <Button variant="danger" size="sm" onClick={() => handleDeleteFactura(f)} title="Borrar"><i className="bi bi-trash"></i>Borrar</Button>
                                             </div>
                                         </td>
                                     </tr>
