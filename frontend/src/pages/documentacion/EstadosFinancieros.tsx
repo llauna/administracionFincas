@@ -2,15 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/useAuth';
 import { ComunidadService } from '../../services/ComunidadService';
 import { MovimientoService } from '../../services/MovimientoService';
-import {Container, Row, Col, Form, Table, Spinner, Alert, Button} from 'react-bootstrap';
+import {Container, Row, Col, Form, Table, Spinner, Alert, Button, Pagination} from 'react-bootstrap';
 
 interface Movimiento {
     _id: string;
     fecha?: string | Date | null;
+    descripcion?: string | null; // <--- Añadimos descripcion
     concepto?: string | null;
     importe?: number | string | null;
     tipo?: 'ingreso' | 'gasto' | string | null;
-    // Otras propiedades que puedan existir
+    propiedad?: {
+        piso?: string;
+        puerta?: string;
+        tipo?: string;
+    } | null;
     [key: string]: any;
 }
 
@@ -34,6 +39,10 @@ const EstadosFinancieros: React.FC = () => {
     const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
     const [loadingMovimientos, setLoadingMovimientos] = useState(false);
     const [error, setError] = useState('');
+
+    // Paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const isEmployee = hasRole(['admin', 'empleado']);
     const isClient = hasRole(['cliente', 'propietario']);
@@ -96,6 +105,7 @@ const EstadosFinancieros: React.FC = () => {
 
             try {
                 setLoadingMovimientos(true);
+
                 let comunidadId = selectedComunidad;
 
                 if (isClient) {
@@ -120,10 +130,13 @@ const EstadosFinancieros: React.FC = () => {
                 const movimientosLimpios = Array.isArray(data) ? data.map(mov => ({
                     _id: mov._id || Math.random().toString(),
                     fecha: mov.fecha ? new Date(mov.fecha) : new Date(),
-                    concepto: mov.concepto || 'Sin concepto',
+                    // USAR descripcion si concepto viene vacío
+                    concepto: mov.descripcion || mov.concepto || 'Sin concepto',
                     importe: typeof mov.importe === 'number' ? mov.importe :
                         (typeof mov.importe === 'string' ? parseFloat(mov.importe) || 0 : 0),
-                    tipo: mov.tipo === 'ingreso' || mov.tipo === 'gasto' ? mov.tipo : 'gasto'
+                    // Asegurar que el tipo sea minúscula para CSS
+                    tipo: mov.tipo?.toLowerCase() === 'ingreso' ? 'ingreso' : 'gasto',
+                    propiedad: mov.propiedad // <--- Guardamos la propiedad
                 })) : [];
 
                 setMovimientos(movimientosLimpios);
@@ -138,8 +151,16 @@ const EstadosFinancieros: React.FC = () => {
         };
 
         fetchMovimientos();
+        setCurrentPage(1);
     }, [selectedComunidad, year, isClient, isEmployee]);
 
+    // Lógica de paginación
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentMovimientos = movimientos.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(movimientos.length / itemsPerPage);
+
+    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
     if (loading) {
         return (
@@ -208,38 +229,77 @@ const EstadosFinancieros: React.FC = () => {
                     </Spinner>
                 </div>
             ) : (
-                <div className="table-responsive">
-                    <Table striped bordered hover>
-                        <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Concepto</th>
-                            <th>Importe</th>
-                            <th>Tipo</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {movimientos.length > 0 ? (
-                            movimientos.map((mov) => (
-                                <tr key={mov._id}>
-                                    <td>{mov.fecha ? formatDate(mov.fecha) : 'Fecha no disponible'}</td>
-                                    <td>{mov.concepto}</td>
-                                    <td className={mov.tipo === 'ingreso' ? 'text-success' : 'text-danger'}>
-                                        {typeof mov.importe === 'number' ? mov.importe.toFixed(2) : '0.00'} €
-                                    </td>
-                                    <td>{mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}</td>
-                                </tr>
-                            ))
-                        ) : (
+                <>
+                    <div className="table-responsive shadow-sm rounded">
+                        <Table striped bordered hover className="align-middle mb-0">
+                            <thead className="table-dark text-center">
                             <tr>
-                                <td colSpan={4} className="text-center">
-                                    No hay movimientos para el año seleccionado
-                                </td>
+                                <th style={{ width: '120px' }}>Fecha</th>
+                                <th style={{ width: '150px' }}>Finca / Piso</th>
+                                <th>Concepto</th>
+                                <th style={{ width: '120px' }}>Importe</th>
+                                <th style={{ width: '100px' }}>Tipo</th>
                             </tr>
-                        )}
-                        </tbody>
-                    </Table>
-                </div>
+                            </thead>
+                            <tbody>
+                            {currentMovimientos.length > 0 ? (
+                                currentMovimientos.map((mov) => (
+                                    <tr key={mov._id}>
+                                        <td className="text-center">{mov.fecha ? formatDate(mov.fecha) : '---'}</td>
+                                        <td className="text-center">
+                                            {mov.propiedad ? (
+                                                <span className="fw-bold text-primary">
+                                                    {mov.propiedad.piso} - {mov.propiedad.puerta}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted small">General</span>
+                                            )}
+                                        </td>
+                                        <td className="text-wrap" style={{ maxWidth: '300px' }}>
+                                            {mov.concepto}
+                                        </td>
+                                        <td className={`text-end fw-bold ${mov.tipo === 'ingreso' ? 'text-success' : 'text-danger'}`}>
+                                            {typeof mov.importe === 'number' ? mov.importe.toFixed(2) : '0.00'} €
+                                        </td>
+                                        <td className="text-center">
+                                            <span className={`badge ${mov.tipo === 'ingreso' ? 'bg-success' : 'bg-danger'}`}>
+                                                {mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className="text-center py-4">
+                                        No hay movimientos para el año seleccionado
+                                    </td>
+                                </tr>
+                            )}
+                            </tbody>
+                        </Table>
+                    </div>
+
+                    {/* Controles de Paginación */}
+                    {totalPages > 1 && (
+                        <div className="d-flex justify-content-center mt-4">
+                            <Pagination>
+                                <Pagination.First onClick={() => paginate(1)} disabled={currentPage === 1} />
+                                <Pagination.Prev onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} />
+                                {[...Array(totalPages)].map((_, index) => (
+                                    <Pagination.Item
+                                        key={index + 1}
+                                        active={index + 1 === currentPage}
+                                        onClick={() => paginate(index + 1)}
+                                    >
+                                        {index + 1}
+                                    </Pagination.Item>
+                                ))}
+                                <Pagination.Next onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />
+                                <Pagination.Last onClick={() => paginate(totalPages)} disabled={currentPage === totalPages} />
+                            </Pagination>
+                        </div>
+                    )}
+                </>
             )}
         </Container>
     );

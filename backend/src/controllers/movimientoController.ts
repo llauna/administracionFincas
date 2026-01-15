@@ -46,8 +46,15 @@ export const getMovimientosPorProveedor = async (req: Request, res: Response) =>
     try {
         const { proveedorId } = req.params;
 
+        // Convertimos el ID a ObjectId para asegurar la compatibilidad en el aggregate
+        const pId = new mongoose.Types.ObjectId(proveedorId);
+
         const movimientosAgrupados = await Movimiento.aggregate([
-            { $match: { proveedor: new mongoose.Types.ObjectId(proveedorId) } },
+            {
+                $match: {
+                    proveedor: pId
+                }
+            },
             {
                 $lookup: {
                     from: 'propiedads',
@@ -58,16 +65,15 @@ export const getMovimientosPorProveedor = async (req: Request, res: Response) =>
             },
             {
                 $group: {
-                    _id: "$descripcion",
+                    _id: "$descripcion", // Agrupamos por concepto para simular "una factura"
                     fecha: { $first: "$fecha" },
-                    comunidadId: { $first: "$comunidad" }, // AÑADIMOS ESTO PARA EL FRONTEND
-                    importeTotal: { $sum: "$importe" },
+                    comunidadId: { $first: "$comunidad" },
+                    importeTotalFactura: { $sum: "$importe" },
                     reparto: {
                         $push: {
                             piso: { $arrayElemAt: ["$infoPropiedad.piso", 0] },
                             puerta: { $arrayElemAt: ["$infoPropiedad.puerta", 0] },
-                            importe: "$importe",
-                            comunidad: "$comunidad" // También lo metemos aquí por seguridad
+                            importe: "$importe"
                         }
                     }
                 }
@@ -75,9 +81,14 @@ export const getMovimientosPorProveedor = async (req: Request, res: Response) =>
             { $sort: { fecha: -1 } }
         ]);
 
-        res.json(movimientosAgrupados);
+        const resultadoFinal = movimientosAgrupados.map(grupo => ({
+            ...grupo,
+            importeTotal: grupo.importeTotalFactura // Renombramos para el frontend
+        }));
 
+        res.json(resultadoFinal);
     } catch (error: any) {
+        console.error("❌ Error en getMovimientosPorProveedor:", error.message);
         res.status(500).json({ mensaje: 'Error al obtener movimientos', error: error.message });
     }
 };
@@ -111,7 +122,9 @@ export const getByComunidadAndYear = async (req: Request, res: Response) => {
                 $gte: startDate,
                 $lte: endDate
             }
-        }).sort({ fecha: 1 }); // Ordenados por fecha ascendente
+        })
+            .populate('propiedad', 'piso puerta tipo') // <--- SOLO AÑADE ESTA LÍNEA AQUÍ
+            .sort({ fecha: 1 }); // Ordenados por fecha ascendente
 
         res.json(movimientos);
     } catch (error: any) {
