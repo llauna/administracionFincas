@@ -14,15 +14,23 @@ const Tesoreria: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const [showAjusteModal, setShowAjusteModal] = useState(false);
+    const [showTransferenciaModal, setShowTransferenciaModal] = useState(false);
+    const [modoModal, setModoModal] = useState<'crear' | 'ajustar'>('crear'); // Nuevo estado
+
     const [formDataAjuste, setFormDataAjuste] = useState({
-        tipoAccion: 'crear', // 'crear' o 'ajustar'
+        cuentaId: '', // Para cuando ajustamos
         tipoCuenta: 'banco',
-        nombreEntidad: '', // Para bancos
-        iban: '',         // Para bancos
-        nombre: '',       // Para cajas
-        saldoInicial: 0,
-        comunidadId: '',
+        nombreEntidad: '',
+        iban: '',
+        nombre: '',
+        valorSaldo: 0, // Unificamos nombre de campo
         motivo: 'Saldo inicial'
+    });
+
+    const [formDataTransfer, setFormDataTransfer] = useState({
+        cuentaOrigen: '',
+        cuentaDestino: '',
+        importe: 0
     });
 
     useEffect(() => {
@@ -58,22 +66,54 @@ const Tesoreria: React.FC = () => {
         refreshData(val);
     };
 
-    const handleCrearCuenta = async (e: React.FormEvent) => {
+    const handleTransferencia = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const payload = {
-                ...formDataAjuste,
-                comunidad: selectedComunidad || null,
-                esAdministracion: selectedComunidad === 'admin_oficina',
-                saldoActual: formDataAjuste.saldoInicial
-            };
+            const [idOrigen, tipoOrigen] = formDataTransfer.cuentaOrigen.split('|');
+            const [idDestino, tipoDestino] = formDataTransfer.cuentaDestino.split('|');
 
-            await TesoreriaService.crearCuenta(payload);
-            toast.success("Cuenta creada correctamente");
+            await TesoreriaService.realizarTransferencia({
+                cuentaOrigenId: idOrigen,
+                tipoOrigen,
+                cuentaDestinoId: idDestino,
+                tipoDestino,
+                importe: formDataTransfer.importe
+            });
+
+            toast.success("Transferencia realizada con éxito");
+            setShowTransferenciaModal(false);
+            refreshData(selectedComunidad);
+        } catch (err) {
+            toast.error("Error al procesar la transferencia");
+        }
+    };
+
+    const handleAccionTesoreria = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (modoModal === 'crear') {
+                const payload = {
+                    ...formDataAjuste,
+                    comunidad: selectedComunidad === 'admin_oficina' ? null : selectedComunidad,
+                    esAdministracion: selectedComunidad === 'admin_oficina',
+                    saldoActual: formDataAjuste.valorSaldo
+                };
+                await TesoreriaService.crearCuenta(payload);
+                toast.success("Recurso creado correctamente");
+            } else {
+                const [id, tipo] = formDataAjuste.cuentaId.split('|');
+                await TesoreriaService.realizarAjuste({
+                    cuentaId: id,
+                    tipoCuenta: tipo,
+                    nuevoSaldo: formDataAjuste.valorSaldo,
+                    motivo: formDataAjuste.motivo
+                });
+                toast.success("Saldo corregido correctamente");
+            }
             setShowAjusteModal(false);
             refreshData(selectedComunidad);
         } catch (err) {
-            toast.error("Error al crear la cuenta");
+            toast.error("Error al procesar la operación");
         }
     };
 
@@ -110,10 +150,13 @@ const Tesoreria: React.FC = () => {
                 </Col>
                 <Col md={7} className="text-md-end mt-3 mt-md-0">
                     <ButtonGroup>
-                        <Button variant="success" onClick={() => setShowAjusteModal(true)}>
-                            <i className="bi bi-plus-circle"></i> Ajuste de Saldo
+                        <Button variant="success" onClick={() => { setModoModal('crear'); setShowAjusteModal(true); }}>
+                            <i className="bi bi-plus-circle"></i> Nueva Cuenta
                         </Button>
-                        <Button variant="warning" className="text-white">
+                        <Button variant="outline-success" onClick={() => { setModoModal('ajustar'); setShowAjusteModal(true); }}>
+                            <i className="bi bi-pencil-square"></i> Ajuste de Saldo
+                        </Button>
+                        <Button variant="warning" className="text-white" onClick={() => setShowTransferenciaModal(true)}>
                             <i className="bi bi-arrow-left-right"></i> Transferencia
                         </Button>
                         <Button variant="outline-secondary" onClick={() => refreshData(selectedComunidad)}>
@@ -123,73 +166,118 @@ const Tesoreria: React.FC = () => {
                 </Col>
             </Row>
 
-            {/* MODAL DE NUEVA CUENTA / AJUSTE */}
-            <Modal show={showAjusteModal} onHide={() => setShowAjusteModal(false)} centered>
-                <Modal.Header closeButton className="bg-success text-white">
-                    <Modal.Title className="h5">Nueva Cuenta o Caja</Modal.Title>
+            {/* MODAL DE TRANSFERENCIA */}
+            <Modal show={showTransferenciaModal} onHide={() => setShowTransferenciaModal(false)} centered>
+                <Modal.Header closeButton className="bg-warning text-white">
+                    <Modal.Title className="h5">Transferencia entre Cuentas</Modal.Title>
                 </Modal.Header>
-                <Form onSubmit={handleCrearCuenta}>
+                <Form onSubmit={handleTransferencia}>
                     <Modal.Body>
-                        <p className="small text-muted mb-3">
-                            Estás registrando un nuevo recurso para: <strong>{selectedComunidad === 'admin_oficina' ? 'Administración' : (comunidades.find(c => c._id === selectedComunidad)?.nombre || 'Global')}</strong>
-                        </p>
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-bold">Tipo de Recurso</Form.Label>
-                            <Form.Select
-                                value={formDataAjuste.tipoCuenta}
-                                onChange={e => setFormDataAjuste({...formDataAjuste, tipoCuenta: e.target.value})}
-                            >
-                                <option value="banco">🏦 Banco (Cuenta Corriente)</option>
-                                <option value="caja">💵 Caja (Efectivo)</option>
+                            <Form.Label className="fw-bold">Cuenta de Origen (Sale dinero)</Form.Label>
+                            <Form.Select required onChange={e => setFormDataTransfer({...formDataTransfer, cuentaOrigen: e.target.value})}>
+                                <option value="">-- Seleccionar Origen --</option>
+                                {data?.bancos.map((b:any) => <option key={b._id} value={`${b._id}|banco`}>🏦 {b.nombreEntidad} ({b.saldoActual.toFixed(2)}€)</option>)}
+                                {data?.cajas.map((c:any) => <option key={c._id} value={`${c._id}|caja`}>💵 {c.nombre} ({c.saldoActual.toFixed(2)}€)</option>)}
                             </Form.Select>
                         </Form.Group>
 
-                        {formDataAjuste.tipoCuenta === 'banco' ? (
-                            <>
-                                <Form.Group className="mb-3">
-                                    <Form.Label className="fw-bold">Entidad Bancaria</Form.Label>
-                                    <Form.Control
-                                        placeholder="Ej: Banco Sabadell"
-                                        required
-                                        onChange={e => setFormDataAjuste({...formDataAjuste, nombreEntidad: e.target.value})}
-                                    />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label className="fw-bold">IBAN</Form.Label>
-                                    <Form.Control
-                                        placeholder="ES00 0000..."
-                                        required
-                                        onChange={e => setFormDataAjuste({...formDataAjuste, iban: e.target.value})}
-                                    />
-                                </Form.Group>
-                            </>
-                        ) : (
-                            <Form.Group className="mb-3">
-                                <Form.Label className="fw-bold">Nombre de la Caja</Form.Label>
-                                <Form.Control
-                                    placeholder="Ej: Caja Fuerte Oficina"
-                                    required
-                                    onChange={e => setFormDataAjuste({...formDataAjuste, nombre: e.target.value})}
-                                />
-                            </Form.Group>
-                        )}
+                        <Form.Group className="mb-3">
+                            <Form.Label className="fw-bold">Cuenta de Destino (Entra dinero)</Form.Label>
+                            <Form.Select required onChange={e => setFormDataTransfer({...formDataTransfer, cuentaDestino: e.target.value})}>
+                                <option value="">-- Seleccionar Destino --</option>
+                                {data?.bancos.map((b:any) => <option key={b._id} value={`${b._id}|banco`}>🏦 {b.nombreEntidad}</option>)}
+                                {data?.cajas.map((c:any) => <option key={c._id} value={`${c._id}|caja`}>💵 {c.nombre}</option>)}
+                            </Form.Select>
+                        </Form.Group>
 
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-bold text-success">Saldo Inicial (€)</Form.Label>
-                            <Form.Control
-                                type="number"
-                                step="0.01"
-                                required
-                                onChange={e => setFormDataAjuste({...formDataAjuste, saldoInicial: Number(e.target.value)})}
-                            />
+                            <Form.Label className="fw-bold">Importe a Traspasar (€)</Form.Label>
+                            <Form.Control type="number" step="0.01" required min="0.01"
+                                          onChange={e => setFormDataTransfer({...formDataTransfer, importe: Number(e.target.value)})} />
                         </Form.Group>
                     </Modal.Body>
-                    <Modal.Footer className="bg-light">
-                        <Button variant="secondary" onClick={() => setShowAjusteModal(false)}>Cancelar</Button>
-                        <Button variant="success" type="submit">Guardar Recurso</Button>
+                    <Modal.Footer>
+                        <Button variant="secondary" onClick={() => setShowTransferenciaModal(false)}>Cancelar</Button>
+                        <Button variant="warning" type="submit" className="text-white">Ejecutar Traspaso</Button>
                     </Modal.Footer>
                 </Form>
             </Modal>
+
+            {/* MODAL UNIFICADO: CREAR / AJUSTAR */}
+            <Modal show={showAjusteModal} onHide={() => setShowAjusteModal(false)} centered>
+                <Modal.Header closeButton className={modoModal === 'crear' ? "bg-success text-white" : "bg-primary text-white"}>
+                    <Modal.Title className="h5">
+                        {modoModal === 'crear' ? '➕ Nueva Cuenta o Caja' : '🔧 Ajuste Manual de Saldo'}
+                    </Modal.Title>
+                </Modal.Header>
+                <Form onSubmit={handleAccionTesoreria}>
+                    <Modal.Body>
+                        {modoModal === 'ajustar' && (
+                            <Form.Group className="mb-3">
+                                <Form.Label className="fw-bold">Seleccionar Cuenta a Corregir</Form.Label>
+                                <Form.Select required onChange={e => setFormDataAjuste({...formDataAjuste, cuentaId: e.target.value})}>
+                                    <option value="">-- Seleccionar --</option>
+                                    <optgroup label="Bancos">
+                                        {data?.bancos.map((b:any) => <option key={b._id} value={`${b._id}|banco`}>{b.nombreEntidad} ({b.saldoActual.toFixed(2)}€)</option>)}
+                                    </optgroup>
+                                    <optgroup label="Cajas">
+                                        {data?.cajas.map((c:any) => <option key={c._id} value={`${c._id}|caja`}>{c.nombre} ({c.saldoActual.toFixed(2)}€)</option>)}
+                                    </optgroup>
+                                </Form.Select>
+                            </Form.Group>
+                        )}
+
+                        {modoModal === 'crear' && (
+                            <>
+                                <Form.Group className="mb-3">
+                                    <Form.Label className="fw-bold">Tipo de Recurso</Form.Label>
+                                    <Form.Select value={formDataAjuste.tipoCuenta} onChange={e => setFormDataAjuste({...formDataAjuste, tipoCuenta: e.target.value})}>
+                                        <option value="banco">🏦 Banco (Cuenta Corriente)</option>
+                                        <option value="caja">💵 Caja (Efectivo)</option>
+                                    </Form.Select>
+                                </Form.Group>
+                                {formDataAjuste.tipoCuenta === 'banco' ? (
+                                    <>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Entidad Bancaria</Form.Label>
+                                            <Form.Control required onChange={e => setFormDataAjuste({...formDataAjuste, nombreEntidad: e.target.value})} />
+                                        </Form.Group>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>IBAN</Form.Label>
+                                            <Form.Control required onChange={e => setFormDataAjuste({...formDataAjuste, iban: e.target.value})} />
+                                        </Form.Group>
+                                    </>
+                                ) : (
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Nombre de la Caja</Form.Label>
+                                        <Form.Control required onChange={e => setFormDataAjuste({...formDataAjuste, nombre: e.target.value})} />
+                                    </Form.Group>
+                                )}
+                            </>
+                        )}
+
+                        <Form.Group className="mb-3">
+                            <Form.Label className="fw-bold">{modoModal === 'crear' ? 'Saldo Inicial (€)' : 'Saldo Real Actual (€)'}</Form.Label>
+                            <Form.Control type="number" step="0.01" required onChange={e => setFormDataAjuste({...formDataAjuste, valorSaldo: Number(e.target.value)})} />
+                        </Form.Group>
+
+                        {modoModal === 'ajustar' && (
+                            <Form.Group className="mb-3">
+                                <Form.Label>Motivo del Ajuste</Form.Label>
+                                <Form.Control placeholder="Ej: Comisión no registrada, error punteo..." required onChange={e => setFormDataAjuste({...formDataAjuste, motivo: e.target.value})} />
+                            </Form.Group>
+                        )}
+                    </Modal.Body>
+                    <Modal.Footer>
+                        <Button variant="secondary" onClick={() => setShowAjusteModal(false)}>Cancelar</Button>
+                        <Button variant={modoModal === 'crear' ? "success" : "primary"} type="submit">
+                            {modoModal === 'crear' ? 'Crear Recurso' : 'Aplicar Ajuste'}
+                        </Button>
+                    </Modal.Footer>
+                </Form>
+            </Modal>
+
 
             {data && (
                 <>

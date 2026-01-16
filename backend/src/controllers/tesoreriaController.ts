@@ -106,32 +106,50 @@ export const realizarAjusteSaldo = async (req: Request, res: Response) => {
 };
 
 export const realizarTransferencia = async (req: Request, res: Response) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
     try {
         const { cuentaOrigenId, tipoOrigen, cuentaDestinoId, tipoDestino, importe } = req.body;
+
+        if (!cuentaOrigenId || !cuentaDestinoId || !importe) {
+            return res.status(400).json({ mensaje: 'Faltan datos obligatorios para la transferencia' });
+        }
 
         const ModeloOrigen = tipoOrigen === 'banco' ? Banco : Caja;
         const ModeloDestino = tipoDestino === 'banco' ? Banco : Caja;
 
-        await ModeloOrigen.findByIdAndUpdate(cuentaOrigenId, { $inc: { saldoActual: -importe } }, { session });
-        await ModeloDestino.findByIdAndUpdate(cuentaDestinoId, { $inc: { saldoActual: importe } }, { session });
+        // 1. Restar el importe de la cuenta de origen
+        const origen = await ModeloOrigen.findByIdAndUpdate(
+            cuentaOrigenId,
+            { $inc: { saldoActual: -importe } },
+            { new: true }
+        );
 
-        await Movimiento.create([{
-            descripcion: `TRANSFERENCIA ENTRE CUENTAS`,
+        // 2. Sumar el importe a la cuenta de destino
+        const destino = await ModeloDestino.findByIdAndUpdate(
+            cuentaDestinoId,
+            { $inc: { saldoActual: importe } },
+            { new: true }
+        );
+
+        if (!origen || !destino) {
+            throw new Error('No se pudo encontrar una de las cuentas involucradas');
+        }
+
+        // 3. Registrar el movimiento para el historial
+        // Nota: esAdministracion y comunidad se heredan de la cuenta de origen
+        await Movimiento.create({
+            descripcion: `TRANSFERENCIA: De ${origen.nombreEntidad || origen.nombre} a ${destino.nombreEntidad || destino.nombre}`,
             importe: importe,
-            tipo: 'Gasto',
+            tipo: 'Gasto', // Se registra como salida en la cuenta origen
             [tipoOrigen === 'banco' ? 'cuentaBanco' : 'cuentaCaja']: cuentaOrigenId,
-            fecha: new Date()
-        }], { session });
+            fecha: new Date(),
+            esAdministracion: origen.esAdministracion || false,
+            comunidad: origen.comunidad || null
+        });
 
-        await session.commitTransaction();
         res.json({ mensaje: 'Transferencia realizada con éxito' });
     } catch (error: any) {
-        await session.abortTransaction();
-        res.status(500).json({ mensaje: 'Error en la transferencia', error: error.message });
-    } finally {
-        session.endSession();
+        console.error("❌ Error en transferencia:", error.message);
+        res.status(500).json({ mensaje: 'Error al procesar la transferencia', error: error.message });
     }
 };
 

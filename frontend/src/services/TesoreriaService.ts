@@ -17,13 +17,27 @@ export const TesoreriaService = {
     },
 
     async crearCuenta(datos: any): Promise<any> {
-        const url = datos.tipoCuenta === 'banco' ? 'http://localhost:5000/api/tesoreria/bancos' : 'http://localhost:5000/api/tesoreria/cajas';
+        // Recuperamos el token manualmente para asegurar que no falle la autorización
+        const token = localStorage.getItem('token');
+        const url = datos.tipoCuenta === 'banco' ? `${API_URL}/bancos` : `${API_URL}/cajas`;
+
         const response = await fetch(url, {
             method: 'POST',
-            headers: getAuthHeader(),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(datos)
         });
-        if (!response.ok) throw new Error('Error al crear la cuenta');
+
+        if (response.status === 401) {
+            throw new Error('Sesión expirada. Por favor, reinicie sesión.');
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.mensaje || 'Error al crear la cuenta');
+        }
         return response.json();
     },
 
@@ -35,9 +49,15 @@ export const TesoreriaService = {
         });
         if (!response.ok) throw new Error('Error al realizar el ajuste');
         return response.json();
+    },
+
+    async realizarTransferencia(datos: any): Promise<any> {
+        const response = await fetch(`${API_URL}/transferencia`, {
+            method: 'POST',
+            headers: getAuthHeader(),
+            body: JSON.stringify(datos)
+        });
+        if (!response.ok) throw new Error('Error al realizar la transferencia');
+        return response.json();
     }
-
-
-
-
 };
