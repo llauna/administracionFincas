@@ -6,7 +6,8 @@ const bancoSchema = new mongoose.Schema({
     bic: { type: String },
     saldoInicial: { type: Number, default: 0 },
     saldoActual: { type: Number, default: 0 },
-    comunidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad', required: true },
+    comunidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad' },
+    esAdministracion: { type: Boolean, default: false },
     esPrincipal: { type: Boolean, default: true },
     activo: { type: Boolean, default: true }
 }, { timestamps: true });

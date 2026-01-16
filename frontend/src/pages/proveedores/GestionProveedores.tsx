@@ -3,6 +3,7 @@ import { Container, Table, Button, Badge, Form, Modal, Row, Col, Alert } from 'r
 import { useNavigate } from 'react-router-dom';
 import { ProveedorService } from '../../services/ProveedorService';
 import { ComunidadService } from '../../services/ComunidadService';
+import { TesoreriaService } from "../../services/TesoreriaService";
 import type { Proveedor } from '../../models/Proveedor';
 
 const GestionProveedores: React.FC = () => {
@@ -23,12 +24,17 @@ const GestionProveedores: React.FC = () => {
 
     const [datosFactura, setDatosFactura] = useState({
         comunidadId: '', tipo: 'factura' as 'factura' | 'nota_gasto',
-        numeroFactura: '', importeBase: 0, iva: 21, importeTotal: 0, concepto: ''
+        numeroFactura: '', importeBase: 0, iva: 21, importeTotal: 0, concepto: '',
+        cuentaBancoId: '', cuentaCajaId: '' // Añadimos estos campos
     });
+
+    const [cuentasDisponibles, setCuentasDisponibles] = useState<{bancos: any[], cajas: any[]}>({ bancos: [], cajas: [] });
 
     const [facturasProveedor, setFacturasProveedor] = useState<any[]>([]);
     const [detallesReparto, setDetallesReparto] = useState<any[]>([]);
     const [showDetalleModal, setShowDetalleModal] = useState(false);
+
+
 
     const handleLoad = async () => {
         try {
@@ -42,6 +48,25 @@ const GestionProveedores: React.FC = () => {
             setError("Error al cargar datos iniciales.");
         }
     };
+
+    useEffect(() => {
+        const cargarCuentas = async () => {
+            if (datosFactura.comunidadId) {
+                try {
+                    const res = await TesoreriaService.getResumen(datosFactura.comunidadId);
+                    setCuentasDisponibles({
+                        bancos: res.bancos || [],
+                        cajas: res.cajas || []
+                    });
+                } catch (err) {
+                    console.error("Error al cargar cuentas de tesorería", err);
+                }
+            } else {
+                setCuentasDisponibles({ bancos: [], cajas: [] });
+            }
+        };
+        cargarCuentas();
+    }, [datosFactura.comunidadId]);
 
     const cargarFacturas = async (proveedorId: string) => {
         try {
@@ -69,7 +94,8 @@ const GestionProveedores: React.FC = () => {
         await cargarFacturas(proveedor._id!);
         setDatosFactura({
             comunidadId: '', tipo: 'factura', numeroFactura: '',
-            importeBase: 0, iva: 21, importeTotal: 0, concepto: ''
+            importeBase: 0, iva: 21, importeTotal: 0, concepto: '',
+            cuentaBancoId: '', cuentaCajaId: ''
         });
         setShowFacturaModal(true);
     };
@@ -239,11 +265,74 @@ const GestionProveedores: React.FC = () => {
                                     <Form.Select size="sm" required value={datosFactura.comunidadId} onChange={e => setDatosFactura({...datosFactura, comunidadId: e.target.value})}>
                                         <option value="">Seleccione...</option>{comunidades.map(c => <option key={c._id} value={c._id}>{c.nombre}</option>)}
                                     </Form.Select></Col>
+                                <Col md={6}><Form.Label className="small mb-0 fw-bold">Cuenta de Pago (Tesorería)</Form.Label>
+                                    <Form.Select
+                                        size="sm"
+                                        required
+                                        onChange={e => {
+                                            const [id, tipo] = e.target.value.split('|');
+                                            setDatosFactura({
+                                                ...datosFactura,
+                                                cuentaBancoId: tipo === 'banco' ? id : '',
+                                                cuentaCajaId: tipo === 'caja' ? id : ''
+                                            });
+                                        }}
+                                    >
+                                        <option value="">-- Seleccionar Banco o Caja --</option>
+                                        <optgroup label="Bancos">
+                                            {cuentasDisponibles.bancos.map(b => (
+                                                <option key={b._id} value={`${b._id}|banco`}>{b.nombreEntidad} ({b.iban})</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="Cajas">
+                                            {cuentasDisponibles.cajas.map(c => (
+                                                <option key={c._id} value={`${c._id}|caja`}>{c.nombre}</option>
+                                            ))}
+                                        </optgroup>
+                                    </Form.Select></Col>
                                 <Col md={6}><Form.Label className="small mb-0 fw-bold">Tipo</Form.Label>
                                     <Form.Select size="sm" value={datosFactura.tipo} onChange={e => recalcularTotales(datosFactura.importeBase, datosFactura.iva, e.target.value)}>
                                         <option value="factura">Factura</option><option value="nota_gasto">Nota Gasto</option>
                                     </Form.Select></Col>
                             </Row>
+
+                            {/* Selector de Cuenta de Pago - AHORA USA cuentasDisponibles */}
+                            <Row className="g-3 mt-1">
+                                <Col md={12}>
+                                    <Form.Label className="small mb-0 fw-bold text-primary">Cuenta de Pago (Tesorería)</Form.Label>
+                                    <Form.Select
+                                        size="sm"
+                                        required
+                                        value={datosFactura.cuentaBancoId ? `${datosFactura.cuentaBancoId}|banco` : (datosFactura.cuentaCajaId ? `${datosFactura.cuentaCajaId}|caja` : '')}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (!val) {
+                                                setDatosFactura({...datosFactura, cuentaBancoId: '', cuentaCajaId: ''});
+                                                return;
+                                            }
+                                            const [id, tipo] = val.split('|');
+                                            setDatosFactura({
+                                                ...datosFactura,
+                                                cuentaBancoId: tipo === 'banco' ? id : '',
+                                                cuentaCajaId: tipo === 'caja' ? id : ''
+                                            });
+                                        }}
+                                    >
+                                        <option value="">-- Seleccionar Banco o Caja --</option>
+                                        <optgroup label="Bancos Disponibles">
+                                            {cuentasDisponibles.bancos.map(b => (
+                                                <option key={b._id} value={`${b._id}|banco`}>{b.nombreEntidad} - {b.iban}</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="Cajas Disponibles">
+                                            {cuentasDisponibles.cajas.map(c => (
+                                                <option key={c._id} value={`${c._id}|caja`}>{c.nombre} (Efectivo)</option>
+                                            ))}
+                                        </optgroup>
+                                    </Form.Select>
+                                </Col>
+                            </Row>
+
                             <Row className="g-3 mt-1">
                                 <Col md={4}><Form.Label className="small mb-0">Nº Factura</Form.Label><Form.Control size="sm" required value={datosFactura.numeroFactura} onChange={e => setDatosFactura({...datosFactura, numeroFactura: e.target.value})} /></Col>
                                 <Col md={4}><Form.Label className="small mb-0">Base (€)</Form.Label><Form.Control size="sm" type="number" step="0.01" required value={datosFactura.importeBase} onChange={e => recalcularTotales(Number(e.target.value), datosFactura.iva, datosFactura.tipo)} /></Col>

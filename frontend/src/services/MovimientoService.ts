@@ -61,5 +61,27 @@ export const MovimientoService = {
             console.error('Error en MovimientoService.getById:', error);
             throw error;
         }
-    }
+    },
+
+    // Método específico para el reparto de gastos con afectación a tesorería
+    async registrarGasto(datosGasto: any): Promise<any> {
+        try {
+            const response = await fetch(`${API_URL}/movimientos/registrar-gasto`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(datosGasto)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.mensaje || 'Error al registrar el gasto');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error en MovimientoService.registrarGasto:', error);
+            throw error;
+        }
+    },
 };

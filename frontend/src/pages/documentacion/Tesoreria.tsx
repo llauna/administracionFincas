@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Spinner, Alert, Form, Button, ButtonGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Spinner, Alert, Form, Button, ButtonGroup, Modal } from 'react-bootstrap';
 import { useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
 import { TesoreriaService } from '../../services/TesoreriaService';
 import { ComunidadService } from '../../services/ComunidadService';
 
@@ -11,6 +12,18 @@ const Tesoreria: React.FC = () => {
     const [selectedComunidad, setSelectedComunidad] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const [showAjusteModal, setShowAjusteModal] = useState(false);
+    const [formDataAjuste, setFormDataAjuste] = useState({
+        tipoAccion: 'crear', // 'crear' o 'ajustar'
+        tipoCuenta: 'banco',
+        nombreEntidad: '', // Para bancos
+        iban: '',         // Para bancos
+        nombre: '',       // Para cajas
+        saldoInicial: 0,
+        comunidadId: '',
+        motivo: 'Saldo inicial'
+    });
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -43,6 +56,25 @@ const Tesoreria: React.FC = () => {
         const val = e.target.value;
         setSelectedComunidad(val);
         refreshData(val);
+    };
+
+    const handleCrearCuenta = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formDataAjuste,
+                comunidad: selectedComunidad || null,
+                esAdministracion: selectedComunidad === 'admin_oficina',
+                saldoActual: formDataAjuste.saldoInicial
+            };
+
+            await TesoreriaService.crearCuenta(payload);
+            toast.success("Cuenta creada correctamente");
+            setShowAjusteModal(false);
+            refreshData(selectedComunidad);
+        } catch (err) {
+            toast.error("Error al crear la cuenta");
+        }
     };
 
     if (loading && !data) return <Container className="mt-5 text-center"><Spinner animation="border" /></Container>;
@@ -78,7 +110,7 @@ const Tesoreria: React.FC = () => {
                 </Col>
                 <Col md={7} className="text-md-end mt-3 mt-md-0">
                     <ButtonGroup>
-                        <Button variant="success">
+                        <Button variant="success" onClick={() => setShowAjusteModal(true)}>
                             <i className="bi bi-plus-circle"></i> Ajuste de Saldo
                         </Button>
                         <Button variant="warning" className="text-white">
@@ -90,6 +122,74 @@ const Tesoreria: React.FC = () => {
                     </ButtonGroup>
                 </Col>
             </Row>
+
+            {/* MODAL DE NUEVA CUENTA / AJUSTE */}
+            <Modal show={showAjusteModal} onHide={() => setShowAjusteModal(false)} centered>
+                <Modal.Header closeButton className="bg-success text-white">
+                    <Modal.Title className="h5">Nueva Cuenta o Caja</Modal.Title>
+                </Modal.Header>
+                <Form onSubmit={handleCrearCuenta}>
+                    <Modal.Body>
+                        <p className="small text-muted mb-3">
+                            Estás registrando un nuevo recurso para: <strong>{selectedComunidad === 'admin_oficina' ? 'Administración' : (comunidades.find(c => c._id === selectedComunidad)?.nombre || 'Global')}</strong>
+                        </p>
+                        <Form.Group className="mb-3">
+                            <Form.Label className="fw-bold">Tipo de Recurso</Form.Label>
+                            <Form.Select
+                                value={formDataAjuste.tipoCuenta}
+                                onChange={e => setFormDataAjuste({...formDataAjuste, tipoCuenta: e.target.value})}
+                            >
+                                <option value="banco">🏦 Banco (Cuenta Corriente)</option>
+                                <option value="caja">💵 Caja (Efectivo)</option>
+                            </Form.Select>
+                        </Form.Group>
+
+                        {formDataAjuste.tipoCuenta === 'banco' ? (
+                            <>
+                                <Form.Group className="mb-3">
+                                    <Form.Label className="fw-bold">Entidad Bancaria</Form.Label>
+                                    <Form.Control
+                                        placeholder="Ej: Banco Sabadell"
+                                        required
+                                        onChange={e => setFormDataAjuste({...formDataAjuste, nombreEntidad: e.target.value})}
+                                    />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label className="fw-bold">IBAN</Form.Label>
+                                    <Form.Control
+                                        placeholder="ES00 0000..."
+                                        required
+                                        onChange={e => setFormDataAjuste({...formDataAjuste, iban: e.target.value})}
+                                    />
+                                </Form.Group>
+                            </>
+                        ) : (
+                            <Form.Group className="mb-3">
+                                <Form.Label className="fw-bold">Nombre de la Caja</Form.Label>
+                                <Form.Control
+                                    placeholder="Ej: Caja Fuerte Oficina"
+                                    required
+                                    onChange={e => setFormDataAjuste({...formDataAjuste, nombre: e.target.value})}
+                                />
+                            </Form.Group>
+                        )}
+
+                        <Form.Group className="mb-3">
+                            <Form.Label className="fw-bold text-success">Saldo Inicial (€)</Form.Label>
+                            <Form.Control
+                                type="number"
+                                step="0.01"
+                                required
+                                onChange={e => setFormDataAjuste({...formDataAjuste, saldoInicial: Number(e.target.value)})}
+                            />
+                        </Form.Group>
+                    </Modal.Body>
+                    <Modal.Footer className="bg-light">
+                        <Button variant="secondary" onClick={() => setShowAjusteModal(false)}>Cancelar</Button>
+                        <Button variant="success" type="submit">Guardar Recurso</Button>
+                    </Modal.Footer>
+                </Form>
+            </Modal>
 
             {data && (
                 <>
