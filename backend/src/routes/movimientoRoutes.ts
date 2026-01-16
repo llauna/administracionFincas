@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getResumenTesoreria } from '../controllers/tesoreriaController';
 import Movimiento from '../models/Movimiento';
 import { authenticate } from '../middleware/authMiddleware';
 import {
@@ -35,6 +36,5 @@ router.post('/registrar-gasto', (req, res, next) => {
 
 // 3. Ruta corregida para Estados Financieros (añadido ':' a comunidadId)
 router.get('/comunidad/:comunidadId/year/:year', getByComunidadAndYear);
-
 
 export default router;

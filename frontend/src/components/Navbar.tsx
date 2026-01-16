@@ -80,12 +80,12 @@ const Navbar: React.FC = () => {
                                         </li>
                                         <li><Link className="dropdown-item" to="/documentacion/actas">Actas de Reuniones</Link></li>
                                         <li><Link className="dropdown-item" to="/documentacion/estados-financieros">Estados Financieros</Link></li>
+                                        <li><Link className="dropdown-item" to="/documentacion/libros-iva">Libros de IVA</Link></li>
                                         <li><Link className="dropdown-item" to="/incidencias">Incidencias</Link></li>
                                         <li className="dropdown-submenu">
                                             <span className="dropdown-item dropdown-toggle">Finanzas ▸</span>
                                             <ul className="dropdown-menu">
-                                                <li><Link className="dropdown-item" to="/caja">Caja</Link></li>
-                                                <li><Link className="dropdown-item" to="/banco">Banco</Link></li>
+                                                <li><Link className="dropdown-item" to="/tesoreria">Caja y Bancos</Link></li>
                                             </ul>
                                         </li>
                                     </ul>

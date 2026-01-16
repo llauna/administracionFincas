@@ -2,11 +2,19 @@ import { Request, Response } from 'express';
 import mongoose from "mongoose";
 import Movimiento from '../models/Movimiento';
 import Propiedad from '../models/Propiedad';
+import { actualizarSaldoCuenta } from './tesoreriaController';
 
 export const registrarGasto = async (req: Request, res: Response) => {
     console.log("🚀 Iniciando proceso de registro de gasto...");
     try {
-        const { comunidadId, proveedorId, concepto, importeTotal, tipo, numeroFactura } = req.body;
+        const { comunidadId, proveedorId, concepto, importeTotal, tipo, numeroFactura, tipoIva, cuentaBancoId, cuentaCajaId } = req.body;
+
+        // Cálculo de IVA (Asumimos que importeTotal es el TOTAL factura)
+        const porcentajeIva = tipoIva || 21; // Por defecto 21% si no se especifica
+        const factorIva = 1 + (porcentajeIva / 100);
+
+        const base = Number((importeTotal / (1 + (porcentajeIva / 100))).toFixed(2));
+        const cuota = Number((importeTotal - base).toFixed(2));
 
         const propiedades = await Propiedad.find({ comunidad: comunidadId });
 
@@ -19,6 +27,9 @@ export const registrarGasto = async (req: Request, res: Response) => {
             const coeficiente = prop.coeficiente || 0;
             const parteProporcional = Number((importeTotal * (coeficiente / 100)).toFixed(2));
 
+            const baseProporcional = Number((parteProporcional / factorIva).toFixed(2));
+            const cuotaProporcional = Number((parteProporcional - baseProporcional).toFixed(2));
+
             return {
                 comunidad: comunidadId,
                 propiedad: prop._id,
@@ -27,14 +38,26 @@ export const registrarGasto = async (req: Request, res: Response) => {
                 fecha: new Date(),
                 descripcion: concepto,
                 importe: parteProporcional,
+                baseImponible: baseProporcional,
+                tipoIva: porcentajeIva,
+                ivaCuota: cuotaProporcional,
                 tipo: 'Gasto',
-                categoria: tipo || 'factura'
+                categoria: tipo || 'factura',
+                cuentaBanco: cuentaBancoId || null,
+                cuentaCaja: cuentaCajaId || null
             };
         });
 
         await Movimiento.insertMany(movimientos);
-        console.log("✅ Reparto completado con éxito");
-        return res.status(201).json({ mensaje: 'Gasto repartido correctamente' });
+        // ACTUALIZACIÓN AUTOMÁTICA DE SALDOS
+        if (cuentaBancoId) {
+            await actualizarSaldoCuenta(cuentaBancoId, 'banco', importeTotal, 'Gasto');
+        } else if (cuentaCajaId) {
+            await actualizarSaldoCuenta(cuentaCajaId, 'caja', importeTotal, 'Gasto');
+        }
+
+        console.log("✅ Reparto y saldos actualizados");
+        return res.status(201).json({ mensaje: 'Gasto registrado y saldos actualizados correctamente' });
 
     } catch (error: any) {
         console.error("❌ ERROR CRÍTICO en registrarGasto:", error.message);
@@ -112,21 +135,27 @@ export const getByComunidadAndYear = async (req: Request, res: Response) => {
     try {
         const { comunidadId, year } = req.params;
 
-        // Creamos el rango de fechas para el año (desde 1 de enero hasta 31 de diciembre)
-        const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
-        const endDate = new Date(`${year}-12-31T23:59:59.999Z`);
+        // Definimos el inicio y fin del año de forma más robusta
+        const startDate = new Date(parseInt(year), 0, 1, 0, 0, 0); // 1 de Enero
+        const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59); // 31 de Diciembre
 
-        const movimientos = await Movimiento.find({
-            comunidad: comunidadId,
-            fecha: {
-                $gte: startDate,
-                $lte: endDate
-            }
-        })
-            .populate('propiedad', 'piso puerta tipo') // <--- SOLO AÑADE ESTA LÍNEA AQUÍ
+        // Lógica de filtro flexible
+        let query: any = {
+            fecha: { $gte: startDate, $lte: endDate }
+        };
+
+        if (comunidadId === 'admin_oficina') {
+            query.esAdministracion = true;
+        } else {
+            query.comunidad = comunidadId;
+            // Busca los que son false O los que no tienen el campo definido aún
+            query.esAdministracion = { $ne: true };
+        }
+
+        const movimientos = await Movimiento.find(query)
+            .populate('propiedad', 'piso puerta tipo')
             .sort({ fecha: 1 }); // Ordenados por fecha ascendente
-
-        res.json(movimientos);
+                res.json(movimientos);
     } catch (error: any) {
         res.status(500).json({ mensaje: 'Error al obtener movimientos', error: error.message });
     }

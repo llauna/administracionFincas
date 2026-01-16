@@ -30,6 +30,8 @@ import Incidencias from "./pages/incidencias/Incidencias";
 import NuevaIncidencia from "./pages/incidencias/NuevaIncidencia";
 import DetalleIncidencia from "./pages/incidencias/DetalleIncidencia";
 import EstadosFinancieros from './pages/documentacion/EstadosFinancieros';
+import LibrosIVA from "./pages/documentacion/LibrosIVA";
+import Tesoreria from "./pages/documentacion/Tesoreria";
 
 function App() {
     return (
@@ -75,6 +77,8 @@ function AppContent() {
                         <Route path="/usuarios/listado" element={<ListadoUsuarios />} />
 
                         <Route path="/documentacion/estados-financieros" element={<EstadosFinancieros />} />
+                        <Route path="/documentacion/libros-iva" element={<LibrosIVA />} />
+                        <Route path="/tesoreria" element={<Tesoreria />} />
 
                         <Route path="/incidencias" element={<Incidencias />} />
                         <Route path="/incidencias/nueva" element={<NuevaIncidencia />} />

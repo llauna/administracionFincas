@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 
-const CajaSchema = new mongoose.Schema({
-    comunidadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad', required: true },
-    fecha: { type: Date, required: true },
-    concepto: { type: String, required: true },
-    importe: { type: Number, required: true },
-    tipo: { type: String, enum: ['Ingreso', 'Gasto'], required: true }
+const cajaSchema = new mongoose.Schema({
+    nombre: { type: String, required: true }, // Ej: "Caja Fuerte Oficina" o "Caja Menuda Comunidad X"
+    saldoActual: { type: Number, default: 0 },
+    comunidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Comunidad' }, // Opcional, si es null es de la Administración
+    esAdministracion: { type: Boolean, default: false },
+    responsable: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Caja', CajaSchema);
+export default mongoose.models.Caja || mongoose.model('Caja', cajaSchema);

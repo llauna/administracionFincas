@@ -40,6 +40,19 @@ const EstadosFinancieros: React.FC = () => {
     const [loadingMovimientos, setLoadingMovimientos] = useState(false);
     const [error, setError] = useState('');
 
+    // Cálculos de totales
+    const totales = movimientos.reduce((acc, mov) => {
+        const importe = typeof mov.importe === 'number' ? mov.importe : 0;
+        if (mov.tipo === 'ingreso') {
+            acc.ingresos += importe;
+        } else {
+            acc.gastos += importe;
+        }
+        return acc;
+    }, { ingresos: 0, gastos: 0 });
+
+    const saldoFinal = totales.ingresos - totales.gastos;
+
     // Paginación
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -220,6 +233,38 @@ const EstadosFinancieros: React.FC = () => {
                     </Form.Group>
                 </Col>
             </Row>
+
+            {/* Resumen de Totales */}
+            {!loadingMovimientos && movimientos.length > 0 && (
+                <Row className="mb-4">
+                    <Col md={4}>
+                        <div className="card border-success shadow-sm">
+                            <div className="card-body text-center">
+                                <h6 className="text-success text-uppercase mb-2">Total Ingresos</h6>
+                                <h3 className="fw-bold text-success">{totales.ingresos.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</h3>
+                            </div>
+                        </div>
+                    </Col>
+                    <Col md={4}>
+                        <div className="card border-danger shadow-sm">
+                            <div className="card-body text-center">
+                                <h6 className="text-danger text-uppercase mb-2">Total Gastos</h6>
+                                <h3 className="fw-bold text-danger">{totales.gastos.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</h3>
+                            </div>
+                        </div>
+                    </Col>
+                    <Col md={4}>
+                        <div className={`card shadow-sm ${saldoFinal >= 0 ? 'border-primary' : 'border-warning'}`}>
+                            <div className="card-body text-center">
+                                <h6 className={`${saldoFinal >= 0 ? 'text-primary' : 'text-warning'} text-uppercase mb-2`}>Saldo Ejercicio</h6>
+                                <h3 className={`fw-bold ${saldoFinal >= 0 ? 'text-primary' : 'text-warning'}`}>
+                                    {saldoFinal.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                                </h3>
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
+            )}
 
             {/* Tabla de movimientos */}
             {loadingMovimientos ? (
