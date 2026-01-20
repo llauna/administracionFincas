@@ -10,11 +10,8 @@ export const registrarGasto = async (req: Request, res: Response) => {
         const { comunidadId, proveedorId, concepto, importeTotal, tipo, numeroFactura, tipoIva, cuentaBancoId, cuentaCajaId } = req.body;
 
         // Cálculo de IVA (Asumimos que importeTotal es el TOTAL factura)
-        const porcentajeIva = tipoIva || 21; // Por defecto 21% si no se especifica
+        const porcentajeIva = Number(tipoIva) || 21;
         const factorIva = 1 + (porcentajeIva / 100);
-
-        const base = Number((importeTotal / (1 + (porcentajeIva / 100))).toFixed(2));
-        const cuota = Number((importeTotal - base).toFixed(2));
 
         const propiedades = await Propiedad.find({ comunidad: comunidadId });
 
@@ -33,7 +30,7 @@ export const registrarGasto = async (req: Request, res: Response) => {
             return {
                 comunidad: comunidadId,
                 propiedad: prop._id,
-                propietario: prop.propietario,
+                propietario: prop.propietario || null,
                 proveedor: proveedorId,
                 fecha: new Date(),
                 descripcion: concepto,
@@ -49,6 +46,7 @@ export const registrarGasto = async (req: Request, res: Response) => {
         });
 
         await Movimiento.insertMany(movimientos);
+
         // ACTUALIZACIÓN AUTOMÁTICA DE SALDOS
         if (cuentaBancoId) {
             await actualizarSaldoCuenta(cuentaBancoId, 'banco', importeTotal, 'Gasto');
@@ -69,33 +67,33 @@ export const getMovimientosPorProveedor = async (req: Request, res: Response) =>
     try {
         const { proveedorId } = req.params;
 
-        // Convertimos el ID a ObjectId para asegurar la compatibilidad en el aggregate
-        const pId = new mongoose.Types.ObjectId(proveedorId);
-
-        const movimientosAgrupados = await Movimiento.aggregate([
+        const facturas = await Movimiento.aggregate([
+            { $match: { proveedor: new mongoose.Types.ObjectId(proveedorId) } },
             {
-                $match: {
-                    proveedor: pId
-                }
-            },
-            {
+                // Unimos con Propiedades para obtener los coeficientes reales
                 $lookup: {
-                    from: 'propiedads',
-                    localField: 'propiedad',
-                    foreignField: '_id',
-                    as: 'infoPropiedad'
+                    from: "propiedads",
+                    localField: "propiedad",
+                    foreignField: "_id",
+                    as: "detallePropiedad"
                 }
             },
+            { $unwind: "$detallePropiedad" },
             {
                 $group: {
-                    _id: "$descripcion", // Agrupamos por concepto para simular "una factura"
+                    _id: "$descripcion",
                     fecha: { $first: "$fecha" },
+                    importeTotal: { $sum: "$importe" },
+                    baseImponible: { $sum: "$baseImponible" },
+                    ivaCuota: { $sum: "$ivaCuota" },
+                    // SUMAMOS los coeficientes para saber si llegamos al 100%
+                    coeficienteTotal: { $sum: "$detallePropiedad.coeficiente" },
                     comunidadId: { $first: "$comunidad" },
-                    importeTotalFactura: { $sum: "$importe" },
                     reparto: {
                         $push: {
-                            piso: { $arrayElemAt: ["$infoPropiedad.piso", 0] },
-                            puerta: { $arrayElemAt: ["$infoPropiedad.puerta", 0] },
+                            piso: "$detallePropiedad.piso",
+                            puerta: "$detallePropiedad.puerta",
+                            coeficiente: "$detallePropiedad.coeficiente",
                             importe: "$importe"
                         }
                     }
@@ -104,15 +102,9 @@ export const getMovimientosPorProveedor = async (req: Request, res: Response) =>
             { $sort: { fecha: -1 } }
         ]);
 
-        const resultadoFinal = movimientosAgrupados.map(grupo => ({
-            ...grupo,
-            importeTotal: grupo.importeTotalFactura // Renombramos para el frontend
-        }));
-
-        res.json(resultadoFinal);
-    } catch (error: any) {
-        console.error("❌ Error en getMovimientosPorProveedor:", error.message);
-        res.status(500).json({ mensaje: 'Error al obtener movimientos', error: error.message });
+        res.json(facturas);
+    } catch (error) {
+        res.status(500).json({ mensaje: "Error al agrupar facturas", error });
     }
 };
 
@@ -136,8 +128,8 @@ export const getByComunidadAndYear = async (req: Request, res: Response) => {
         const { comunidadId, year } = req.params;
 
         // Definimos el inicio y fin del año de forma más robusta
-        const startDate = new Date(parseInt(year), 0, 1, 0, 0, 0); // 1 de Enero
-        const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59); // 31 de Diciembre
+        const startDate = new Date(parseInt(year), 0, 1, 0, 0, 0);
+        const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59);
 
         // Lógica de filtro flexible
         let query: any = {
@@ -158,5 +150,52 @@ export const getByComunidadAndYear = async (req: Request, res: Response) => {
                 res.json(movimientos);
     } catch (error: any) {
         res.status(500).json({ mensaje: 'Error al obtener movimientos', error: error.message });
+    }
+};
+export const generarFacturaServicioEmpresa = async (req: Request, res: Response) => {
+    try {
+        const { comunidadId, nombreEmpresa, baseImponible, tipoIva } = req.body;
+
+        const porcentajeIva = Number(tipoIva) || 21;
+        const base = Number(Number(baseImponible).toFixed(2));
+        const cuota = Number((base * (porcentajeIva / 100)).toFixed(2));
+        const importeTotal = Number((base + cuota).toFixed(2));
+
+        // 1. REGISTRO EN LA EMPRESA (Ingreso/Venta)
+        const ingresoEmpresa = new Movimiento({
+            descripcion: `FRA: ${nombreEmpresa}`,
+            importe: importeTotal,
+            baseImponible: base,
+            tipoIva: porcentajeIva,
+            ivaCuota: cuota,
+            tipo: 'Ingreso',
+            esAdministracion: true,
+            fecha: new Date()
+        });
+
+        // 2. REGISTRO EN LA COMUNIDAD (Gasto repartido)
+        const propiedades = await Propiedad.find({ comunidad: comunidadId });
+        const movimientosGasto = propiedades.map(prop => ({
+            comunidad: comunidadId,
+            propiedad: prop._id,
+            propietario: prop.propietario || null,
+            descripcion: `Honorarios Admin: ${nombreEmpresa}`,
+            importe: Number((importeTotal * ((prop.coeficiente || 0) / 100)).toFixed(2)),
+            baseImponible: Number((base * ((prop.coeficiente || 0) / 100)).toFixed(2)),
+            tipoIva: porcentajeIva,
+            ivaCuota: Number((cuota * ((prop.coeficiente || 0) / 100)).toFixed(2)),
+            tipo: 'Gasto',
+            categoria: 'factura',
+            fecha: new Date()
+        }));
+
+        await Promise.all([
+            ingresoEmpresa.save(),
+            Movimiento.insertMany(movimientosGasto)
+        ]);
+
+        res.status(201).json({ mensaje: 'Factura generada y repartida a la comunidad' });
+    } catch (error: any) {
+        res.status(500).json({ mensaje: 'Error al generar factura cruzada', error: error.message });
     }
 };

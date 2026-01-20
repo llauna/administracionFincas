@@ -40,3 +40,54 @@
 .read-the-docs {
   color: #888;
 }
+
+@media print {
+  /* Ocultar elementos innecesarios al imprimir */
+  .navbar,
+  .d-print-none,
+  footer,
+  .nav-tabs, /* Oculta las pestañas de Bootstrap */
+  .nav-link,
+  .text-muted.small.mt-2.text-end /* Oculta el subtítulo que salía debajo */ {
+    display: none !important;
+  }
+
+  /* Reset total de márgenes para aprovechar el ancho de la página */
+  @page {
+    margin: 1cm !important;
+  }
+
+  body {
+    font-size: 10pt;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #root, .container {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+
+  /* Ajuste de la tabla */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed; /* Ayuda a que las celdas respeten los anchos */
+  }
+
+  th, td {
+    border: 1px solid #333 !important;
+    padding: 3px 5px !important;
+    word-break: break-word; /* Para que el concepto largo no rompa la tabla */
+  }
+
+  .table-dark {
+    background-color: #333 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+  }
+}

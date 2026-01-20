@@ -3,38 +3,26 @@ import { Container, Table, Button, Badge, Form, Modal, Row, Col, Alert } from 'r
 import { useNavigate } from 'react-router-dom';
 import { ProveedorService } from '../../services/ProveedorService';
 import { ComunidadService } from '../../services/ComunidadService';
-import { TesoreriaService } from "../../services/TesoreriaService";
 import type { Proveedor } from '../../models/Proveedor';
 
 const GestionProveedores: React.FC = () => {
     const navigate = useNavigate();
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
     const [error, setError] = useState('');
-
-    const [showModal, setShowModal] = useState(false);
-    const [nuevoProveedor, setNuevoProveedor] = useState<Proveedor>({
-        nombre: '', nif: '', direccion: '', poblacion: '', cp: '',
-        tipoServicio: 'Limpieza', actividad: '', telefono: '', email: ''
-    });
+    const [comunidades, setComunidades] = useState<any[]>([]);
 
     const [showFacturaModal, setShowFacturaModal] = useState(false);
     const [modoEdicionFactura, setModoEdicionFactura] = useState(false);
-    const [comunidades, setComunidades] = useState<any[]>([]);
     const [currentProveedor, setCurrentProveedor] = useState<Proveedor | null>(null);
+    const [facturasProveedor, setFacturasProveedor] = useState<any[]>([]);
+
+    const [showDetalleModal, setShowDetalleModal] = useState(false);
+    const [detallesReparto, setDetallesReparto] = useState<any[]>([]);
 
     const [datosFactura, setDatosFactura] = useState({
         comunidadId: '', tipo: 'factura' as 'factura' | 'nota_gasto',
-        numeroFactura: '', importeBase: 0, iva: 21, importeTotal: 0, concepto: '',
-        cuentaBancoId: '', cuentaCajaId: '' // Añadimos estos campos
+        numeroFactura: '', importeBase: 0, iva: 21, importeTotal: 0, concepto: ''
     });
-
-    const [cuentasDisponibles, setCuentasDisponibles] = useState<{bancos: any[], cajas: any[]}>({ bancos: [], cajas: [] });
-
-    const [facturasProveedor, setFacturasProveedor] = useState<any[]>([]);
-    const [detallesReparto, setDetallesReparto] = useState<any[]>([]);
-    const [showDetalleModal, setShowDetalleModal] = useState(false);
-
-
 
     const handleLoad = async () => {
         try {
@@ -49,25 +37,6 @@ const GestionProveedores: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        const cargarCuentas = async () => {
-            if (datosFactura.comunidadId) {
-                try {
-                    const res = await TesoreriaService.getResumen(datosFactura.comunidadId);
-                    setCuentasDisponibles({
-                        bancos: res.bancos || [],
-                        cajas: res.cajas || []
-                    });
-                } catch (err) {
-                    console.error("Error al cargar cuentas de tesorería", err);
-                }
-            } else {
-                setCuentasDisponibles({ bancos: [], cajas: [] });
-            }
-        };
-        cargarCuentas();
-    }, [datosFactura.comunidadId]);
-
     const cargarFacturas = async (proveedorId: string) => {
         try {
             const token = localStorage.getItem('token');
@@ -75,14 +44,7 @@ const GestionProveedores: React.FC = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
-            if (Array.isArray(data)) {
-                // Aseguramos que el comunidadId esté presente para el recalcular
-                const formateados = data.map(f => ({
-                    ...f,
-                    comunidadId: f.comunidadId || (f.reparto && f.reparto[0]?.comunidad)
-                }));
-                setFacturasProveedor(formateados);
-            }
+            setFacturasProveedor(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error("Error cargando facturas", error);
         }
@@ -92,11 +54,6 @@ const GestionProveedores: React.FC = () => {
         setCurrentProveedor(proveedor);
         setModoEdicionFactura(false);
         await cargarFacturas(proveedor._id!);
-        setDatosFactura({
-            comunidadId: '', tipo: 'factura', numeroFactura: '',
-            importeBase: 0, iva: 21, importeTotal: 0, concepto: '',
-            cuentaBancoId: '', cuentaCajaId: ''
-        });
         setShowFacturaModal(true);
     };
 
@@ -106,22 +63,22 @@ const GestionProveedores: React.FC = () => {
     };
 
     const handleRecalcular = async (f: any) => {
-        if (window.confirm(`¿Deseas recalcular el reparto de "${f._id}"?`)) {
+        if (window.confirm(`¿Deseas recalcular el reparto de "${f._id}" con los nuevos coeficientes?`)) {
             try {
-                const cId = f.comunidadId;
-                if (!cId) throw new Error("No se encontró el ID de la comunidad.");
-
+                const token = localStorage.getItem('token');
+                // 1. Borramos el reparto antiguo para evitar duplicados
                 await fetch(`http://localhost:5000/api/movimientos/bulk-delete`, {
                     method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ descripcion: f._id, proveedorId: currentProveedor?._id })
                 });
 
+                // 2. Extraemos los datos originales para volver a generar el reparto
                 const soloConcepto = f._id.split(' (Factura:')[0];
                 const soloNumero = f._id.match(/\(Factura: (.*?)\)/)?.[1] || "";
 
                 await ProveedorService.createFactura({
-                    comunidadId: cId,
+                    comunidadId: f.comunidadId,
                     proveedorId: currentProveedor?._id,
                     concepto: soloConcepto,
                     numeroFactura: soloNumero,
@@ -129,7 +86,7 @@ const GestionProveedores: React.FC = () => {
                     tipo: 'factura'
                 });
 
-                alert("Reparto recalculado.");
+                alert("Reparto recalculado exitosamente.");
                 await cargarFacturas(currentProveedor?._id!);
             } catch (err: any) {
                 setError("Error al recalcular: " + err.message);
@@ -140,31 +97,16 @@ const GestionProveedores: React.FC = () => {
     const handleDeleteFactura = async (facturaGroup: any) => {
         if (window.confirm(`¿Seguro que quieres eliminar la factura "${facturaGroup._id}"?`)) {
             try {
+                const token = localStorage.getItem('token');
                 await fetch(`http://localhost:5000/api/movimientos/bulk-delete`, {
                     method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ descripcion: facturaGroup._id, proveedorId: currentProveedor?._id })
                 });
                 await cargarFacturas(currentProveedor!._id!);
             } catch (err) {
                 setError("No se pudo eliminar.");
             }
-        }
-    };
-
-    const handleSubmitFactura = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const conceptoUnico = `${datosFactura.concepto} (Factura: ${datosFactura.numeroFactura})`;
-            await ProveedorService.createFactura({ ...datosFactura, concepto: conceptoUnico, proveedorId: currentProveedor?._id });
-            alert('Gasto registrado con éxito.');
-            setModoEdicionFactura(false);
-            await cargarFacturas(currentProveedor?._id!);
-        } catch (error) {
-            setError("Error al registrar factura.");
         }
     };
 
@@ -176,30 +118,33 @@ const GestionProveedores: React.FC = () => {
         }));
     };
 
-    useEffect(() => { handleLoad(); }, []);
-
-    const handleSubmitProveedor = async (e: React.FormEvent) => {
+    const handleSubmitFactura = async (e: React.FormEvent) => {
         e.preventDefault();
-        await ProveedorService.create(nuevoProveedor);
-        setShowModal(false);
-        handleLoad();
+        try {
+            const conceptoUnico = `${datosFactura.concepto} (Factura: ${datosFactura.numeroFactura})`;
+            await ProveedorService.createFactura({ ...datosFactura, concepto: conceptoUnico, proveedorId: currentProveedor?._id });
+            setModoEdicionFactura(false);
+            await cargarFacturas(currentProveedor?._id!);
+        } catch (error) {
+            setError("Error al registrar factura.");
+        }
     };
+
+    useEffect(() => { handleLoad(); }, []);
 
     return (
         <Container fluid className="px-4 mt-2">
-            {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
-
+            {error && (
+                <Alert variant="danger" onClose={() => setError('')} dismissible className="mt-2">
+                    {error}
+                </Alert>
+            )}
             <div className="d-flex justify-content-between align-items-center mb-3">
-                <div className="d-flex align-items-center gap-3">
-                    <h4 className="text-primary mb-0 font-weight-bold">Mantenimiento de Proveedores</h4>
-                    <Button variant="outline-secondary" size="sm" onClick={() => navigate('/dashboard')}>
-                        <i className="bi bi-arrow-left"></i> Volver
-                    </Button>
-                </div>
-                <Button variant="success" size="sm" onClick={() => setShowModal(true)}>Nuevo Proveedor</Button>
+                <h4 className="text-primary mb-0 fw-bold">Mantenimiento de Proveedores</h4>
+                <Button variant="outline-secondary" size="sm" onClick={() => navigate('/dashboard')}>Volver</Button>
             </div>
 
-            <Table striped hover size="sm" style={{ fontSize: '0.85rem' }}>
+            <Table striped hover size="sm">
                 <thead className="table-dark">
                 <tr><th>Nombre Comercial</th><th>CIF</th><th>Servicio</th><th className="text-center">Acciones</th></tr>
                 </thead>
@@ -217,22 +162,25 @@ const GestionProveedores: React.FC = () => {
             </Table>
 
             <Modal show={showFacturaModal} onHide={() => setShowFacturaModal(false)} size="xl" centered>
-                <Modal.Header closeButton className="py-2 bg-light">
+                <Modal.Header closeButton className="bg-light py-2">
                     <Modal.Title className="h6">Gestión de Facturas: {currentProveedor?.nombre}</Modal.Title>
                 </Modal.Header>
-                <Modal.Body className={modoEdicionFactura ? 'py-3' : 'p-0'}>
+                <Modal.Body className={modoEdicionFactura ? 'p-4' : 'p-0'}>
                     {!modoEdicionFactura ? (
                         <>
                             <div className="p-2 d-flex justify-content-end bg-light border-bottom">
-                                <Button variant="success" size="sm" onClick={() => setModoEdicionFactura(true)}>+ Registrar Factura</Button>
+                                <Button variant="success" size="sm" onClick={() => {
+                                    setDatosFactura({ comunidadId: '', tipo: 'factura', numeroFactura: '', importeBase: 0, iva: 21, importeTotal: 0, concepto: '' });
+                                    setModoEdicionFactura(true);
+                                }}>+ Registrar Factura</Button>
                             </div>
-                            <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.8rem' }}>
+                            <Table striped hover size="sm" className="mb-0">
                                 <thead className="table-light">
                                 <tr>
-                                    <th style={{ width: '90px' }}>Fecha</th>
-                                    <th style={{ width: '40%' }}>Concepto / Nº</th>
-                                    <th className="text-end" style={{ width: '100px' }}>Total</th>
-                                    <th className="text-center" style={{ width: '200px' }}>Acciones</th>
+                                    <th>Fecha</th>
+                                    <th>Concepto / Nº</th>
+                                    <th className="text-end">Total Comunidad</th>
+                                    <th className="text-center">Acciones</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -244,11 +192,25 @@ const GestionProveedores: React.FC = () => {
                                                 {f._id} <i className="bi bi-eye ms-1"></i>
                                             </Button>
                                         </td>
-                                        <td className="fw-bold text-end pe-3 text-danger">{Number(f.importeTotal).toFixed(2)}€</td>
+                                        <td className="text-end fw-bold text-dark">{Number(f.importeTotal).toFixed(2)}€</td>
                                         <td className="text-center">
                                             <div className="d-flex justify-content-center gap-2">
-                                                <Button variant="warning" size="sm" onClick={() => handleRecalcular(f)} title="Recalcular"><i className="bi bi-arrow-repeat"></i>Recalcular</Button>
-                                                <Button variant="danger" size="sm" onClick={() => handleDeleteFactura(f)} title="Borrar"><i className="bi bi-trash"></i>Borrar</Button>
+                                                {/* BOTÓN RECALCULAR RECUPERADO */}
+                                                <Button
+                                                    variant="warning"
+                                                    size="sm"
+                                                    onClick={() => handleRecalcular(f)}
+                                                    title="Recalcular con nuevos coeficientes"
+                                                >
+                                                    <i className="bi bi-arrow-repeat"></i> Recalcular
+                                                </Button>
+                                                <Button
+                                                    variant="danger"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteFactura(f)}
+                                                >
+                                                    <i className="bi bi-trash"></i> Borrar
+                                                </Button>
                                             </div>
                                         </td>
                                     </tr>
@@ -259,114 +221,63 @@ const GestionProveedores: React.FC = () => {
                             </Table>
                         </>
                     ) : (
-                        <Form onSubmit={handleSubmitFactura} className="px-4 py-3">
+                        <Form onSubmit={handleSubmitFactura}>
                             <Row className="g-3">
-                                <Col md={6}><Form.Label className="small mb-0 fw-bold">Comunidad</Form.Label>
+                                <Col md={6}>
+                                    <Form.Label className="small fw-bold">Comunidad</Form.Label>
                                     <Form.Select size="sm" required value={datosFactura.comunidadId} onChange={e => setDatosFactura({...datosFactura, comunidadId: e.target.value})}>
-                                        <option value="">Seleccione...</option>{comunidades.map(c => <option key={c._id} value={c._id}>{c.nombre}</option>)}
-                                    </Form.Select></Col>
-                                <Col md={6}><Form.Label className="small mb-0 fw-bold">Cuenta de Pago (Tesorería)</Form.Label>
-                                    <Form.Select
-                                        size="sm"
-                                        required
-                                        onChange={e => {
-                                            const [id, tipo] = e.target.value.split('|');
-                                            setDatosFactura({
-                                                ...datosFactura,
-                                                cuentaBancoId: tipo === 'banco' ? id : '',
-                                                cuentaCajaId: tipo === 'caja' ? id : ''
-                                            });
-                                        }}
-                                    >
-                                        <option value="">-- Seleccionar Banco o Caja --</option>
-                                        <optgroup label="Bancos">
-                                            {cuentasDisponibles.bancos.map(b => (
-                                                <option key={b._id} value={`${b._id}|banco`}>{b.nombreEntidad} ({b.iban})</option>
-                                            ))}
-                                        </optgroup>
-                                        <optgroup label="Cajas">
-                                            {cuentasDisponibles.cajas.map(c => (
-                                                <option key={c._id} value={`${c._id}|caja`}>{c.nombre}</option>
-                                            ))}
-                                        </optgroup>
-                                    </Form.Select></Col>
-                                <Col md={6}><Form.Label className="small mb-0 fw-bold">Tipo</Form.Label>
+                                        <option value="">Seleccione...</option>
+                                        {comunidades.map(c => <option key={c._id} value={c._id}>{c.nombre}</option>)}
+                                    </Form.Select>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Label className="small fw-bold">Tipo</Form.Label>
                                     <Form.Select size="sm" value={datosFactura.tipo} onChange={e => recalcularTotales(datosFactura.importeBase, datosFactura.iva, e.target.value)}>
-                                        <option value="factura">Factura</option><option value="nota_gasto">Nota Gasto</option>
-                                    </Form.Select></Col>
-                            </Row>
-
-                            {/* Selector de Cuenta de Pago - AHORA USA cuentasDisponibles */}
-                            <Row className="g-3 mt-1">
-                                <Col md={12}>
-                                    <Form.Label className="small mb-0 fw-bold text-primary">Cuenta de Pago (Tesorería)</Form.Label>
-                                    <Form.Select
-                                        size="sm"
-                                        required
-                                        value={datosFactura.cuentaBancoId ? `${datosFactura.cuentaBancoId}|banco` : (datosFactura.cuentaCajaId ? `${datosFactura.cuentaCajaId}|caja` : '')}
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            if (!val) {
-                                                setDatosFactura({...datosFactura, cuentaBancoId: '', cuentaCajaId: ''});
-                                                return;
-                                            }
-                                            const [id, tipo] = val.split('|');
-                                            setDatosFactura({
-                                                ...datosFactura,
-                                                cuentaBancoId: tipo === 'banco' ? id : '',
-                                                cuentaCajaId: tipo === 'caja' ? id : ''
-                                            });
-                                        }}
-                                    >
-                                        <option value="">-- Seleccionar Banco o Caja --</option>
-                                        <optgroup label="Bancos Disponibles">
-                                            {cuentasDisponibles.bancos.map(b => (
-                                                <option key={b._id} value={`${b._id}|banco`}>{b.nombreEntidad} - {b.iban}</option>
-                                            ))}
-                                        </optgroup>
-                                        <optgroup label="Cajas Disponibles">
-                                            {cuentasDisponibles.cajas.map(c => (
-                                                <option key={c._id} value={`${c._id}|caja`}>{c.nombre} (Efectivo)</option>
-                                            ))}
-                                        </optgroup>
+                                        <option value="factura">Factura</option>
+                                        <option value="nota_gasto">Nota Gasto</option>
                                     </Form.Select>
                                 </Col>
                             </Row>
-
-                            <Row className="g-3 mt-1">
-                                <Col md={4}><Form.Label className="small mb-0">Nº Factura</Form.Label><Form.Control size="sm" required value={datosFactura.numeroFactura} onChange={e => setDatosFactura({...datosFactura, numeroFactura: e.target.value})} /></Col>
-                                <Col md={4}><Form.Label className="small mb-0">Base (€)</Form.Label><Form.Control size="sm" type="number" step="0.01" required value={datosFactura.importeBase} onChange={e => recalcularTotales(Number(e.target.value), datosFactura.iva, datosFactura.tipo)} /></Col>
-                                <Col md={4}><Form.Label className="small mb-0">IVA %</Form.Label><Form.Control size="sm" type="number" disabled={datosFactura.tipo === 'nota_gasto'} value={datosFactura.iva} onChange={e => recalcularTotales(datosFactura.importeBase, Number(e.target.value), datosFactura.tipo)} /></Col>
+                            <Row className="g-3 mt-2">
+                                <Col md={4}><Form.Label className="small">Nº Factura</Form.Label><Form.Control size="sm" required value={datosFactura.numeroFactura} onChange={e => setDatosFactura({...datosFactura, numeroFactura: e.target.value})} /></Col>
+                                <Col md={4}><Form.Label className="small">Base (€)</Form.Label><Form.Control size="sm" type="number" step="0.01" required value={datosFactura.importeBase} onChange={e => recalcularTotales(Number(e.target.value), datosFactura.iva, datosFactura.tipo)} /></Col>
+                                <Col md={4}><Form.Label className="small">IVA %</Form.Label><Form.Control size="sm" type="number" disabled={datosFactura.tipo === 'nota_gasto'} value={datosFactura.iva} onChange={e => recalcularTotales(datosFactura.importeBase, Number(e.target.value), datosFactura.tipo)} /></Col>
                             </Row>
-                            <div className="p-3 bg-light border rounded mt-3 text-end">Total: <strong className="text-primary h4 mb-0">{datosFactura.importeTotal.toFixed(2)}€</strong></div>
-                            <Form.Group className="mt-3"><Form.Label className="small mb-0 fw-bold">Concepto</Form.Label><Form.Control size="sm" as="textarea" rows={2} required value={datosFactura.concepto} onChange={e => setDatosFactura({...datosFactura, concepto: e.target.value})} /></Form.Group>
-                            <div className="d-flex justify-content-between mt-4"><Button variant="secondary" onClick={() => setModoEdicionFactura(false)}>Volver</Button><Button variant="primary" type="submit">Generar Reparto</Button></div>
+                            <div className="p-3 bg-light border rounded mt-3 text-end">
+                                <span className="me-2 text-muted">Total Factura:</span>
+                                <strong className="text-primary h4 mb-0">{datosFactura.importeTotal.toFixed(2)}€</strong>
+                            </div>
+                            <Form.Group className="mt-3">
+                                <Form.Label className="small fw-bold">Concepto</Form.Label>
+                                <Form.Control
+                                    size="sm" as="textarea" rows={2} required
+                                    value={datosFactura.concepto} onChange={e => setDatosFactura({...datosFactura, concepto: e.target.value})}
+                                />
+                            </Form.Group>
+                            <div className="d-flex justify-content-between mt-4">
+                                <Button variant="secondary" onClick={() => setModoEdicionFactura(false)}>Volver</Button>
+                                <Button variant="primary" type="submit">Generar Reparto por Coeficientes</Button>
+                            </div>
                         </Form>
                     )}
                 </Modal.Body>
             </Modal>
 
             <Modal show={showDetalleModal} onHide={() => setShowDetalleModal(false)} size="lg" centered>
-                <Modal.Header closeButton className="py-2 bg-primary text-white"><Modal.Title className="h6">Desglose de Reparto</Modal.Title></Modal.Header>
+                <Modal.Header closeButton className="py-2 bg-primary text-white"><Modal.Title className="h6">Detalle de Reparto por Coeficientes</Modal.Title></Modal.Header>
                 <Modal.Body className="p-0">
-                    <Table striped hover size="sm" className="mb-0" style={{ fontSize: '0.85rem' }}>
-                        <thead className="table-light"><tr><th>Propiedad</th><th className="text-end">Cuota (€)</th></tr></thead>
+                    <Table striped hover size="sm" className="mb-0">
+                        <thead className="table-light"><tr><th>Propiedad</th><th className="text-center">Coeficiente</th><th className="text-end">Cuota (€)</th></tr></thead>
                         <tbody>
                         {detallesReparto.map((d, i) => (
-                            <tr key={i}><td>Piso {d.piso || '-'} - Pta {d.puerta || '-'}</td><td className="text-end fw-bold">{Number(d.importe || 0).toFixed(2)}€</td></tr>
+                            <tr key={i}>
+                                <td>Piso {d.piso || '-'} - Pta {d.puerta || '-'}</td>
+                                <td className="text-center">{d.coeficiente || '-'}%</td>
+                                <td className="text-end fw-bold">{Number(d.importe || 0).toFixed(2)}€</td>
+                            </tr>
                         ))}
                         </tbody>
                     </Table>
-                </Modal.Body>
-            </Modal>
-
-            <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-                <Modal.Header closeButton><Modal.Title className="h6">Nuevo Proveedor</Modal.Title></Modal.Header>
-                <Modal.Body>
-                    <Form onSubmit={handleSubmitProveedor}>
-                        <Form.Label className="small">Nombre</Form.Label><Form.Control size="sm" required value={nuevoProveedor.nombre} onChange={e => setNuevoProveedor({...nuevoProveedor, nombre: e.target.value})} />
-                        <div className="text-end mt-3"><Button variant="primary" size="sm" type="submit">Guardar</Button></div>
-                    </Form>
                 </Modal.Body>
             </Modal>
         </Container>

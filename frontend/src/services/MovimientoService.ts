@@ -84,4 +84,20 @@ export const MovimientoService = {
             throw error;
         }
     },
+
+    async generarFacturaServicio(datos: any): Promise<any> {
+        try {
+            const response = await fetch(`${API_URL}/movimientos/factura-servicio-empresa`, {
+                method: 'POST',
+                headers: getAuthHeader(),
+                body: JSON.stringify(datos)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.mensaje || 'Error al generar factura');
+            return data;
+        } catch (error) {
+            console.error('Error en MovimientoService.generarFacturaServicio:', error);
+            throw error;
+        }
+    }
 };

@@ -6,7 +6,8 @@ import {
     registrarGasto,
     getMovimientosPorProveedor,
     deleteMovimientosAgrupados,
-    getByComunidadAndYear
+    getByComunidadAndYear,
+    generarFacturaServicioEmpresa
 } from '../controllers/movimientoController';
 
 const router = Router();
@@ -33,6 +34,22 @@ router.post('/registrar-gasto', (req, res, next) => {
     console.log("➡️ Intentando acceder a /api/movimientos/registrar-gasto");
     next();
 }, registrarGasto);
+
+router.post('/factura-servicio-empresa', authenticate, generarFacturaServicioEmpresa);
+
+router.delete('/factura-servicio-empresa', authenticate, async (req, res) => {
+    try {
+        const { descripcion } = req.body;
+        // Borramos el registro de la empresa (FAC: ...) y los de la comunidad (Honorarios Admin: ...)
+        // Buscamos coincidencias que contengan la descripción base
+        const resultado = await Movimiento.deleteMany({
+            descripcion: { $regex: descripcion, $options: 'i' }
+        });
+        res.json({ mensaje: `Eliminados ${resultado.deletedCount} registros.` });
+    } catch (error: any) {
+        res.status(500).json({ mensaje: 'Error al eliminar factura', error: error.message });
+    }
+});
 
 // 3. Ruta corregida para Estados Financieros (añadido ':' a comunidadId)
 router.get('/comunidad/:comunidadId/year/:year', getByComunidadAndYear);
