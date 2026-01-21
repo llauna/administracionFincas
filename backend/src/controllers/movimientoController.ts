@@ -179,7 +179,7 @@ export const generarFacturaServicioEmpresa = async (req: Request, res: Response)
             comunidad: comunidadId,
             propiedad: prop._id,
             propietario: prop.propietario || null,
-            descripcion: `Honorarios Admin: ${nombreEmpresa}`,
+            descripcion: `${nombreEmpresa}: ${baseImponible}€ + IVA`,
             importe: Number((importeTotal * ((prop.coeficiente || 0) / 100)).toFixed(2)),
             baseImponible: Number((base * ((prop.coeficiente || 0) / 100)).toFixed(2)),
             tipoIva: porcentajeIva,

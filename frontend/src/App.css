@@ -76,13 +76,17 @@
   table {
     width: 100% !important;
     border-collapse: collapse !important;
-    table-layout: fixed; /* Ayuda a que las celdas respeten los anchos */
+    table-layout: auto !important; /* Permitir que las celdas se ajusten al contenido */
   }
 
   th, td {
     border: 1px solid #333 !important;
-    padding: 3px 5px !important;
-    word-break: break-word; /* Para que el concepto largo no rompa la tabla */
+    padding: 6px 8px !important;
+  }
+
+  /* Ocultar definitivamente la columna de acciones y el botón */
+  .d-print-none, th.d-print-none, td.d-print-none {
+    display: none !important;
   }
 
   .table-dark {

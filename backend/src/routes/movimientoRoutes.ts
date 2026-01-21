@@ -40,12 +40,25 @@ router.post('/factura-servicio-empresa', authenticate, generarFacturaServicioEmp
 router.delete('/factura-servicio-empresa', authenticate, async (req, res) => {
     try {
         const { descripcion } = req.body;
-        // Borramos el registro de la empresa (FAC: ...) y los de la comunidad (Honorarios Admin: ...)
-        // Buscamos coincidencias que contengan la descripción base
+
+        if (!descripcion) {
+            return res.status(400).json({ mensaje: 'Descripción no proporcionada' });
+        }
+
+        // Usamos una búsqueda exacta o un regex escapado para evitar problemas con símbolos (€, +, etc.)
         const resultado = await Movimiento.deleteMany({
-            descripcion: { $regex: descripcion, $options: 'i' }
+            descripcion: descripcion.trim()
         });
-        res.json({ mensaje: `Eliminados ${resultado.deletedCount} registros.` });
+
+        if (resultado.deletedCount === 0) {
+            // Si no borra nada por nombre exacto, intentamos con regex flexible como respaldo
+            const resultadoRegex = await Movimiento.deleteMany({
+                descripcion: { $regex: descripcion.split(':')[0], $options: 'i' }
+            });
+            return res.json({ mensaje: `Eliminados ${resultadoRegex.deletedCount} registros por búsqueda flexible.` });
+        }
+
+        res.json({ mensaje: `Eliminados ${resultado.deletedCount} registros correctamente.` });
     } catch (error: any) {
         res.status(500).json({ mensaje: 'Error al eliminar factura', error: error.message });
     }
